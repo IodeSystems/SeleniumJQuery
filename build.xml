@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+Overview:
+====================
+This is a java build, dependency resolving, testing, packaging, and deployment system.
+It is intended to be cross platform, but I only actively test linux.
+
+Requirements:
+====================
+It requires ant (http://ant.apache.org/bindownload.cgi), and then it will download everything else.
+If you are deploying, you will need to have a ssh client with sshkeys, and rsync. Windows users should look into Cygwin (http://cygwin.com/install.html)
+
+Installation:
+====================
+To install this build system, simply download/copy the build.xml file into your project root and treat it as a regualar ant build file.
+
+	curl https://gist.github.com/gists/1401567/download > build.xml
+
+Usage:
+====================
+Usage is fairly basic. If you want to generate a basic structure of what the system deals with, run this command:
+
+	ant init
+
+This will print out a summary of what directories and files are looked at and used by the build system.
+
+The core tasks that you would want to use would probably be:
+
+	ant ivy-resolve # This downloads all dependencies defined in your ivy.xml file
+	ant test # This compiles your source code, then compiles your test source code and then runs the tests and shows the output
+	ant dist # This compiles your code, copies your ivy.xml and your libs to your dist dir, as well as jaring up your sources, and resources.
+	ant deploy # If configured, this runs dist and test and then rsyncs the dist folder to a server and then runs a command.
+
+Since deploy does almost everything, you could get away with only using ant deploy - It will not actually deploy unless you've setup deployment.
+
+Getting Started:
+====================
+When creating a new project, you can run:
+
+	ant init # This creates a skeleton of a project based around this build.xml
+
+This will create some empty folders and files along with messages about what they are used fore.
+
+Several empty files are created and need to be filled out before the build system can considered to be functional. 
+These files include the build.properties, ivysettings.xml, ivy.xml, and optionally local.build.properties.
+Below is a collection of examples of these files' contents.
+
+Example of a basic build.properties file:
+==========================================
+module=MyProject # The name of my project
+version=0.1      # The current version of my project
+org=com.nthalk   # The entity that produced the project
+jar.class=com.nthalk.MyProject.Application # The class that the jar runs the main method off of during java -jar {module}.jar
+
+Example of a basic ivy.xml file: (http://ant.apache.org/ivy/history/trunk/tutorial/conf.html)
+NOTE: The @var@ tokens are replaced by similar settings in the build.properties file so that you do not have to edit them in two places. 
+==========================================
+<ivy-module version="2.0">
+	<info module="@MODULE@" organisation="@ORG@" revision="@VERSION@" />
+	<configurations>
+		<conf name="compile" visibility="public" />
+		<conf name="test" visibility="public" extends="compile" />
+	</configurations>
+	<dependencies>
+		<dependency org="com.google.guava" name="guava" rev="r09"
+			conf="compile" />
+		<dependency org="junit" name="junit" rev="4.10" conf="test->compile" />
+	</dependencies>
+</ivy-module>
+
+Example ivysettings.xml file: (http://ant.apache.org/ivy/history/latest-milestone/settings.html)
+NOTE: I use this, it includes my company's public repository.
+==========================================
+<ivysettings version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <settings defaultResolver="chain" />
+  <resolvers>
+    <chain name="chain" returnFirst="true">
+      <filesystem name="local.repo"  changingPattern=".*" checkmodified="true">
+        <artifact pattern="${repo.dir}/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+        <ivy pattern="${repo.dir}/[organisation]/[module]/[revision]/ivy.xml"/>
+      </filesystem>
+      <url name="com.anteambulo" checksums="">
+        <artifact pattern="http://www.anteambulo.com:2912/files/repo/[organisation]/[module]/[revision]/[module]-[revision].jar" />
+        <ivy pattern="http://www.anteambulo.com:2912/files/repo/[organisation]/[module]/[revision]/ivy.xml" />
+      </url>
+      <ibiblio name="central" m2compatible="true" />
+      <ibiblio name="couchbase" m2compatible="true" root="http://files.couchbase.com/maven2/" />
+    </chain>
+  </resolvers>
+</ivysettings>
+
+
+Example of a local.build.properties:
+==========================================
+deploy.user=nthalk         # This is the user that will be used - It is important to have your sshkeys setup before using this.
+deploy.host=nthalk.com     # This is the host that will be used via ssh.
+deploy.dir=/opt/MyProject/ # This directory will have the dist of my project rsynced into it (you will need to have rsync installed).
+deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProject.jar > /opt/MyPorject/last.deploy.log 2>&1 &' # This is a complex command, it sets the display (I'm using Xvfb), nohup's the jar (so it does not terminate on logout), and drops immediate input into the last.deploy log so I can see what went wrong. Usually, I configure outside logging, so that last.deploy.log only contains errors up until the actuallogging is configured.
+
+-->
+<project xmlns:ivy="antlib:org.apache.ivy.ant" default="dist" basedir=".">
+	<!-- Property files -->
+	<property name="build.properties.file" location="build.properties" />
+	<property file="${build.properties.file}" />
+	<property name="local.build.properties.file" location="local.build.properties" />
+	<property file="${local.build.properties.file}" />
+
+	<!-- Properties -->
+	<property name="repo.dir" location="${user.home}/local/lib/ivyrepo" />
+	<property name="src.dir" location="src" />
+	<property name="test.dir" location="test" />
+	<property name="gen.dir" location="gen" />
+	<property name="res.dir" location="res" />
+	<property name="lib.dir" location="lib" />
+	<property name="build.dir" location="build" />
+	<property name="dist.dir" location="dist" />
+
+	<!-- Plugins -->
+
+	<!-- BEGIN JUNIT plugin -->
+	<property name="junit.lib.dir" location="${user.home}/.ant/lib" />
+	<!-- JUNIT autoinstaller -->
+	<available property="junit-exists" file="${junit.lib.dir}/ant-junit-1.8.2.jar" />
+	<target name="junit-download" unless="junit-exists">
+		<mkdir dir="${junit.lib.dir}" />
+		<get src="http://repo1.maven.org/maven2/org/apache/ant/ant-junit/1.8.2/ant-junit-1.8.2.jar" dest="${junit.lib.dir}/ant-junit-1.8.2.jar" />
+		<get src="http://repo1.maven.org/maven2/junit/junit/4.10/junit-4.10.jar" dest="${junit.lib.dir}/junit-4.10.jar" />
+		<get src="http://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.1/hamcrest-core-1.1.jar" dest="${junit.lib.dir}/hamcrest-core-1.1.jar" />
+	</target>
+	<target name="junit-init" depends="junit-download">
+		<taskdef name="junit" classname="org.apache.tools.ant.taskdefs.optional.junit.JUnitTask">
+			<classpath>
+				<pathelement location="${junit.lib.dir}/junit-4.10.jar" />
+				<pathelement location="${junit.lib.dir}/ant-junit-1.8.2.jar" />
+			</classpath>
+		</taskdef>
+	</target>
+	<!-- END JUNIT plugin -->
+
+	<!-- BEGIN IVY plugin -->
+	<property name="ivy.dep.file" value="ivy.xml" />
+	<property name="ivy.lib.dir" value="${lib.dir}" />
+	<property name="ivy.install.version" value="2.1.0-rc2" />
+	<property name="ivy.settings.file" location="ivysettings.xml" />
+	<condition property="ivy.home" value="${env.IVY_HOME}">
+		<isset property="env.IVY_HOME" />
+	</condition>
+	<property name="ivy.home" value="${user.home}/.ant" />
+	<property name="ivy.jar.dir" value="${ivy.home}/lib" />
+	<property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
+	<available file="${ivy.jar.file}" property="ivy-exists" />
+	<target name="ivy-download" unless="ivy-exists">
+		<mkdir dir="${ivy.jar.dir}" />
+		<!-- download Ivy from web site so that it can be used even without any special installation -->
+		<get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar" dest="${ivy.jar.file}" usetimestamp="true" />
+	</target>
+	<target name="ivy-init" depends="ivy-download">
+		<!-- try to load ivy here from ivy home, in case the user has not already dropped
+	              it into ant's lib dir (note that the latter copy will always take precedence).
+	              We will not fail as long as local lib dir exists (it may be empty) and
+	              ivy is in at least one of ant's lib dir or the local lib dir. -->
+		<path id="ivy.lib.path">
+			<fileset dir="${ivy.jar.dir}" includes="*.jar" />
+		</path>
+		<taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path" />
+	</target>
+	<target name="ivy-resolve" depends="ivy-init,contrib-init">
+		<if>
+			<available file="${ivy.settings.file}" />
+			<then>
+				<ivy:settings file="${ivy.settings.file}" />
+			</then>
+		</if>
+		<ivy:resolve file="${ivy.dep.file}" conf="${ivy.configurations}" />
+		<ivy:retrieve />
+	</target>
+	<target name="ivy-install" depends="jar">
+		<mkdir dir="${repo.dir}/${org}/${module}/${version}/" />
+		<copy file="${dist.dir}/ivy.xml" todir="${repo.dir}/${org}/${module}/${version}/" />
+		<copy file="${dist.dir}/${module}.jar" tofile="${repo.dir}/${org}/${module}/${version}/${module}-${version}.jar" />
+		<delete dir="${ivy.home}/cache/${org}/${module}" />
+	</target>
+	<!-- END IVY plugin -->
+
+	<!-- BEGIN ANT-CONTRIB plugin -->
+	<property name="ant-contrib.lib.dir" location="${user.home}/.ant/lib" />
+	<!-- ANT-CONTRIB autoinstaller -->
+	<available property="ant-contrib-exists" file="${ant-contrib.lib.dir}/ant-contrib-1.0b3.jar" />
+	<target name="contrib-download" unless="ant-contrib-exists">
+		<mkdir dir="${ant-contrib.lib.dir}" />
+		<get src="http://downloads.sourceforge.net/project/ant-contrib/ant-contrib/1.0b3/ant-contrib-1.0b3-bin.zip?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fant-contrib%2Ffiles%2Fant-contrib%2F1.0b3%2F&amp;use_mirror=cdnetworks-us-1" dest="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" username="true" />
+		<unzip src="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" dest="${ant-contrib.lib.dir}" overwrite="no" />
+		<move todir="${ant-contrib.lib.dir}">
+			<fileset file="${ant-contrib.lib.dir}/ant-contrib/*.jar" />
+			<fileset file="${ant-contrib.lib.dir}/ant-contrib/lib/*.jar" />
+		</move>
+		<delete file="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" />
+		<delete dir="${ant-contrib.lib.dir}/ant-contrib" />
+	</target>
+	<target name="contrib-init" depends="contrib-download">
+		<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+			<classpath>
+				<pathelement location="${ant-contrib.lib.dir}/ant-contrib-1.0b3.jar" />
+			</classpath>
+		</taskdef>
+	</target>
+	<!-- END ANT-CONTRIB plugin -->
+
+	<!-- Deletes the existing build, docs and dist directory -->
+	<target name="clean">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${dist.dir}" />
+		<mkdir dir="${lib.dir}" />
+
+		<delete dir="${build.dir}" includes="**/*" />
+		<delete dir="${dist.dir}" includes="**/*" />
+	</target>
+
+	<!-- Creates the build, docs and dist directory -->
+	<target name="init">
+		<echo message="Creating ivy.xml file -- This is where you define your project's dependency configuration." />
+		<touch file="${ivy.dep.file}" />
+		<echo message="Creating src directory -- this is where your application code goes." />
+		<mkdir dir="${src.dir}" />
+		<echo message="Creating res directory -- this is where any non-java resources that will be present in the distribution jar will go." />
+		<mkdir dir="${res.dir}" />
+		<echo message="Creating test directory -- this is where your junit test cases should go." />
+		<mkdir dir="${test.dir}" />
+		<echo message="Creating build.properties file -- this is where you should define your module's version, company name, and jar properties." />
+		<touch file="${build.properties.file}" />
+		<echo message="Creating local.build.properties file -- this is where you should define your envirnoment's build properties, like your deployment command, user, host, and dir." />
+		<touch file="${local.build.properties.file}" />
+		<echo message="Creating ivysettings.xml file -- This is where you define your resolvers for dependency retrieval." />
+		<touch file="${ivy.settings.file}" />
+		<echo message="Creating build directory -- this is where class files are compiled into." />
+		<mkdir dir="${build.dir}" />
+		<echo message="Creating dist directory -- this is where the project, ivy descriptor, and dependencies are copied into for distribution." />
+		<mkdir dir="${dist.dir}" />
+		<echo message="Creating lib directory -- this is where the ivy gathers the build dependencies." />
+		<mkdir dir="${lib.dir}" />
+		<echo message="Creating gen directory -- this is where any generated code goes." />
+		<mkdir dir="${gen.dir}" />
+	</target>
+
+	<!-- Provieds a project the option to define precompilation tasks -->
+	<target name="precompile" depends="clean, ivy-resolve, contrib-init">
+		<if>
+			<available file="precompile.xml" />
+			<then>
+				<ant antfile="precompile.xml" />
+			</then>
+		</if>
+	</target>
+
+	<!-- Compiles the java code -->
+	<target name="compile" depends="precompile">
+		<path id="build.classpath">
+			<fileset dir="${lib.dir}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<if>
+			<available file="${gen.dir}" type="dir" />
+			<then>
+				<property name="java.src.dirs" value="${src.dir};${gen.dir}" />
+			</then>
+			<else>
+				<property name="java.src.dirs" value="${src.dir}" />
+			</else>
+		</if>
+		<javac srcdir="${java.src.dirs}" destdir="${build.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
+	</target>
+
+	<!-- Copies the non sources/docs jars alongside the the release jar -->
+	<target name="jar-libs">
+		<mkdir dir="${dist.dir}/lib" />
+		<copy todir="${dist.dir}/lib">
+			<fileset dir="${lib.dir}" includes="*.jar" excludes="*-sources.jar,*-javadoc.jar" />
+		</copy>
+	</target>
+
+	<!--Creates the deployable jar file -->
+	<target name="jar" depends="compile,jar-libs">
+		<path id="build.classpath">
+			<fileset dir="${lib.dir}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<!-- We have to include the libs for the jar -->
+		<manifestclasspath property="lib.list" jarfile="${dist.dir}">
+			<classpath refid="build.classpath" />
+		</manifestclasspath>
+		<!-- Jar the resources -->
+		<jar destfile="${dist.dir}/${module}.jar">
+			<manifest>
+				<attribute name="Main-Class" value="${jar.class}" />
+				<attribute name="Class-Path" value="${lib.list}" />
+			</manifest>
+			<fileset dir="${src.dir}" />
+			<fileset dir="${build.dir}" />
+			<fileset dir="${gen.dir}" erroronmissingdir="false" />
+			<fileset dir="${res.dir}" erroronmissingdir="false" />
+		</jar>
+		<!-- Copy the ivy file next to the jar -->
+		<copy file="ivy.xml" todir="${dist.dir}">
+			<filterset>
+				<filter token="VERSION" value="${version}" />
+				<filter token="MODULE" value="${module}" />
+				<filter token="ORG" value="${org}" />
+			</filterset>
+		</copy>
+	</target>
+
+	<!-- Distribution -->
+	<target name="dist" depends="jar,ivy-install">
+		<if>
+			<available file="dist.xml" />
+			<then>
+				<ant antfile="dist.xml" />
+			</then>
+		</if>
+	</target>
+
+	<!-- Testing -->
+	<target name="test" depends="jar,junit-init,contrib-init">
+		<if>
+			<available file="${test.dir}" property="tests-exist" />
+			<then>
+				<path id="build.classpath">
+					<fileset dir="${dist.dir}">
+						<include name="**/*.jar" />
+					</fileset>
+				</path>
+				<javac srcdir="${test.dir};" destdir="${test.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
+				<echo message="Running tests..." />
+				<junit showoutput="true">
+					<classpath>
+						<path refid="build.classpath" />
+						<path location="${test.dir}" />
+					</classpath>
+					<formatter type="plain" usefile="false" />
+					<batchtest>
+						<fileset dir="${test.dir}" includes="**/*.class" />
+					</batchtest>
+				</junit>
+			</then>
+		</if>
+	</target>
+
+	<!-- Deploys the project -->
+	<target name="deploy" depends="dist,test">
+		<if>
+			<!-- Run an external deploy.xml file if it exists -->
+			<available file="deploy.xml" />
+			<then>
+				<ant antfile="deploy.xml" />
+			</then>
+			<elseif>
+				<!-- Run internal deploy scripts if configured -->
+				<and>
+					<isset property="deploy.host" />
+					<isset property="deploy.dir" />
+					<isset property="deploy.user" />
+					<isset property="deploy.cmd" />
+				</and>
+				<then>
+					<echo message="Deploying files..." />
+					<exec dir="." executable="rsync" failonerror="true">
+						<arg line="-rlDv -e ssh ${dist.dir}/ ${deploy.user}@${deploy.host}:${deploy.dir}" />
+					</exec>
+					<echo message="Running service..." />
+					<exec dir="." executable="ssh" failonerror="true">
+						<arg line="-n -f ${deploy.user}@${deploy.host} &quot;${deploy.cmd}&quot;" />
+					</exec>
+				</then>
+			</elseif>
+			<else>
+				<echo message="Deployment not configured through deploy.xml or deploy properties: deploy.user, deploy.host, deploy.dir, deploy.cmd" />
+			</else>
+		</if>
+	</target>
+</project>

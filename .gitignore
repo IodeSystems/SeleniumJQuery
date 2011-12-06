@@ -1,0 +1,7 @@
+lib
+dist
+bin
+build
+.project
+.classpath
+.settings
