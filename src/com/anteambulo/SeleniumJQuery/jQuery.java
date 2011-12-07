@@ -18,6 +18,25 @@ public class jQuery {
     js = null;
   }
 
+  private int load_tag_index = 0;
+
+  public void waitUntilLoaded() {
+    String tag = "__load_tag_" + (load_tag_index++);
+    try {
+      js("jQuery(function(){" +
+        "  window." + tag + "=true;" +
+        "}));");
+    } catch (WebDriverException e) {
+      if (!include()) {
+        throw e;
+      }
+      js("jQuery(function(){" +
+        "  window." + tag + "=true;" +
+        "}));");
+    }
+    jsWait("return window." + tag);
+  }
+
   public jQuery(JavascriptExecutor drv) {
     this.js = drv;
   }
@@ -109,6 +128,11 @@ public class jQuery {
     public WebElement get() {
       return we;
     }
+    
+    public jQElement next(){
+      WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).next().get(0)", we);
+      return new jQElement(getSelector() + ":next()", p, getJs());
+    }
 
     public jQElement change() {
       return trigger("change");
@@ -135,7 +159,7 @@ public class jQuery {
 
     public jQElement parent(String query) {
       if (we != null) {
-        WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).parent(arguments[1]).get(0)", we, query);
+        WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).parents(arguments[1]).get(0)", we, query);
         return new jQElement(query, p, getJs());
       }
       return this;
