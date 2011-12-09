@@ -2,11 +2,7 @@
 	<info module="@MODULE@" organisation="@ORG@" revision="@VERSION@" />
 	<dependencies>
 		<!-- Selenium -->
-		<dependency org="org.seleniumhq.selenium" name="selenium-support"
-			rev="2.3.1" />
 		<dependency org="org.seleniumhq.selenium" name="selenium-java"
-			rev="2.3.1" />
-		<!-- Logging -->
-		<dependency org="org.slf4j" name="slf4j-api" rev="1.6.1" />
+			rev="2.9.0" />
 	</dependencies>
 </ivy-module>

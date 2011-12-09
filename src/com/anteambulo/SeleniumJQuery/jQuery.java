@@ -1,692 +1,1218 @@
 package com.anteambulo.SeleniumJQuery;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.StaleElementReferenceException;
-import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 
-public class jQuery {
+public class jQuery implements Iterable<WebElement> {
+  private String selector;
+  private Long length;
+  private final String ref;
+  private final jQueryFactory jqf;
+  private boolean closed = false;
+  private final jQuery parent;
+  private final List<jQuery> children = new ArrayList<jQuery>();
 
-  private JavascriptExecutor js;
-
-  public jQuery() {
-    js = null;
+  public static abstract class Eacher {
+    public abstract void invoke(Integer index, WebElement ele);
   }
 
-  private int load_tag_index = 0;
+  public static abstract class Sorter {
+    public abstract int invoke(WebElement a, WebElement b);
+  }
 
-  public void waitUntilLoaded() {
-    String tag = "__load_tag_" + (load_tag_index++);
-    try {
-      js("jQuery(function(){" +
-        "  window." + tag + "=true;" +
-        "}));");
-    } catch (WebDriverException e) {
-      if (!include()) {
-        throw e;
-      }
-      js("jQuery(function(){" +
-        "  window." + tag + "=true;" +
-        "}));");
+  public static abstract class Mapper<T> {
+    public abstract T invoke(Integer index, WebElement ele);
+  }
+
+  public static String createRef(long ref) {
+    return "window.jquery_proxy_" + ref;
+  }
+
+  public String createRef() {
+    return createRef(jqf.createId());
+  }
+
+  public jQuery(jQueryFactory jqf, String reference, jQuery parent) {
+    this.jqf = jqf;
+    this.ref = reference;
+    this.parent = parent;
+  }
+
+  public jQuery(jQueryFactory jqf, long id, String query) {
+    this(jqf, createRef(id), query, null);
+  }
+
+  public jQuery(jQueryFactory jqf, String reference, String query) {
+    this(jqf, reference, query, null);
+  }
+
+  public jQuery(jQueryFactory jqf, String reference, String query, jQuery parent) {
+    this(jqf, reference, parent);
+
+    if (parent != null) {
+      this.selector = parent.selector + query;
+    } else {
+      this.selector = query;
     }
-    jsWait("return window." + tag);
-  }
 
-  public jQuery(JavascriptExecutor drv) {
-    this.js = drv;
-  }
-
-  public void setJs(JavascriptExecutor js) {
-    if (js == null) {
-      throw new IllegalArgumentException("JavascriptExecutor should not be null.");
-    }
-    this.js = js;
-  }
-
-  public JavascriptExecutor getJs() {
-    if (js == null) {
-      throw new IllegalStateException("JavascriptExecutor should have been set.");
-    }
-    return js;
-  }
-
-  public Object js(String eval, Object... args) {
-    return getJs().executeScript(eval, args);
-  }
-
-  public Object jsWait(String eval, Object... args) {
-    try {
-      return jsWaitSafe(eval, args);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public Object jsWait(long timeout, String eval, Object... args) {
-    try {
-      return jsWaitSafe(timeout, eval, args);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
+    if (query != null && parent == null) {
+      init();
     }
   }
 
-  private long defaultTimeout = 30000;
-
-  public long getDefaultTimeout() {
-    return defaultTimeout;
+  public jQuery(jQueryFactory jqf, long id, WebElement we) {
+    this(jqf, createRef(id), null, null);
+    init(we);
   }
 
-  public jQuery setDefaultTimeout(long defaultTimeout) {
-    this.defaultTimeout = defaultTimeout;
+  public Object jsret(String method, Object... args) {
+    return js("return " + ref + method, args);
+  }
+
+  public void jsref(String method, Object... args) {
+    js(ref + method, args);
+  }
+
+  public Object js(String script, Object... args) {
+    check();
+    return jqf.js(script, args);
+  }
+
+  public Long length() {
+    return length;
+  }
+
+  public Long refreshSize() {
+    return length = (Long) jsret(".length");
+  }
+
+  private void check() {
+    if (closed) {
+      throw new IllegalStateException("Cannot use a closed jquery object.");
+    }
+  }
+
+  public jQuery init() {
+    if (!closed) {
+      close();
+    }
+    closed = false;
+    jsref("= jQuery(arguments[0]);", selector);
+    refresh();
     return this;
   }
 
-  public Object jsWaitSafe(String eval, Object... args) throws TimeoutException {
-    return jsWaitSafe(getDefaultTimeout(), eval, args);
+  public jQuery init(WebElement we) {
+    if (!closed) {
+      close();
+    }
+    closed = false;
+    jsref("= jQuery(arguments[0]);", we);
+    refresh();
+    return this;
   }
 
-  public Object jsWaitSafe(long timeout, String eval, Object... args) throws TimeoutException {
-    final long to = System.currentTimeMillis() + timeout;
-    while (true) {
-      Object ret = js(eval, args);
-      if (ret != null) {
-        if (ret instanceof Boolean) {
-          if ((Boolean) ret) {
-            return ret;
-          }
-        } else {
-          return ret;
-        }
-      }
-      if (to < System.currentTimeMillis()) {
-        throw new TimeoutException("Timeout waiting for js: " + eval);
-      }
-    }
-  }
-
-  public static class jQElement extends jQuery {
-    final private WebElement we;
-    final private String selector;
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj instanceof jQElement) {
-        return we.equals(((jQElement) obj).we);
-      }
-      return super.equals(obj);
-    }
-
-    public String getSelector() {
-      return selector;
-    }
-
-    public WebElement get() {
-      return we;
-    }
-    
-    public jQElement next(){
-      WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).next().get(0)", we);
-      return new jQElement(getSelector() + ":next()", p, getJs());
-    }
-
-    public jQElement change() {
-      return trigger("change");
-    }
-
-    public jQElement blur() {
-      return trigger("blur");
-    }
-
-    public jQElement focus() {
-      return trigger("focus");
-    }
-
-    public jQElement click() {
-      if (we != null) {
-        getJs().executeScript("jQuery(arguments[0]).click()", we);
-        if (tagName().equalsIgnoreCase("option")) {
-          jQElement parent = parent("select");
-          parent.val(val()).change();
-        }
-      }
-      return this;
-    }
-
-    public jQElement parent(String query) {
-      if (we != null) {
-        WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).parents(arguments[1]).get(0)", we, query);
-        return new jQElement(query, p, getJs());
-      }
-      return this;
-    }
-
-    public jQElement parent() {
-      if (we != null) {
-        WebElement p = (WebElement) getJs().executeScript("return jQuery(arguments[0]).parent().get(0)", we);
-        return new jQElement(getSelector() + ":parent", p, getJs());
-      }
-      return this;
-    }
-
-    public jQElement trigger(String event) {
-      if (we != null) {
-        getJs().executeScript("jQuery(arguments[0]).trigger(arguments[1])", we, event);
-      }
-      return this;
-    }
-
-    public boolean visible() {
-      return is(":visible");
-    }
-
-    public jQElement(String selector, WebElement we, JavascriptExecutor js) {
-      super(js);
-      this.we = we;
-      this.selector = selector;
-    }
-
-    public String val() {
-      if (we != null) {
-        return String.valueOf(getJs().executeScript("return jQuery(arguments[0]).val()", we));
-      }
-      return "";
-    }
-
-    public jQElement val(String val) {
-      if (we != null) {
-        getJs().executeScript("jQuery(arguments[0]).val(arguments[1])", we, val);
-      }
-      return this;
-    }
-
-    public jQElement find(String query) {
-      try {
-        return findSafe(query);
-      } catch (NoSuchElementException e) {
-        return new jQElement(query, null, getJs());
-      }
-    }
-
-    public jQElement findSafe(String query) throws NoSuchElementException {
-      WebElement we;
-
-      if (this.we != null) {
-        we = (WebElement) getJs().executeScript("" +
-          "var jq = jQuery(arguments[0]).find(arguments[1]);" +
-          "return jq.get(0);", this.we, query);
-      } else {
-        we = (WebElement) getJs().executeScript("" +
-          "var jq = jQuery(document).find(arguments[0]);" +
-          "return jq.get(0);", query);
-      }
-      if (we == null) {
-        throw new NoSuchElementException(query);
-      }
-      return new jQElement(query, we, getJs());
-    }
-
+  public jQuery refresh() {
     @SuppressWarnings("unchecked")
-    public List<jQElement> findAll(String query) {
-      List<jQElement> ret = new ArrayList<jQElement>();
-
-      List<WebElement> src;
-      if (this.we == null) {
-        src = (List<WebElement>) getJs().executeScript("return jQuery(document).find(arguments[0]).get()", query);
-      } else {
-        src = (List<WebElement>) getJs().executeScript("return jQuery(arguments[0]).find(arguments[1]).get()", this.we, query);
-      }
-      for (WebElement we : src) {
-        ret.add(new jQElement(query, we, getJs()));
-      }
-      return ret;
-    }
-
-    public String attr(String attr) {
-      if (we == null) {
-        return "";
-      }
-      String ret = String.valueOf(getJs().executeScript("return jQuery(arguments[0]).attr(arguments[1])", we, attr));
-      if (ret == null) {
-        ret = "";
-      }
-      return ret;
-    }
-
-    public String css(String css) {
-      if (we == null) {
-        return "";
-      }
-      return (String) getJs().executeScript("return jQuery(arguments[0]).css(arguments[1])", we, css);
-    }
-
-    public String tagName() {
-      if (we == null) {
-        return "";
-      }
-      return we.getTagName();
-    }
-
-    public String html() {
-      if (we == null) {
-        return "";
-      }
-      String ret = (String) getJs().executeScript("return jQuery(arguments[0]).html()", we);
-      if (ret == null) {
-        return "";
-      } else {
-        return ret.trim();
-      }
-    }
-
-    public String text() {
-      if (we == null) {
-        return "";
-      }
-      String ret = (String) getJs().executeScript("return jQuery(arguments[0]).text()", we);
-      if (ret == null) {
-        return "";
-      } else {
-        return ret.trim();
-      }
-
-    }
-
-    public String textVisible() {
-      if (we == null) {
-        return "";
-      }
-      return we.getText();
-    }
-
-    public jQElement type(CharSequence... keys) {
-      if (we == null) {
-        return this;
-      }
-      we.sendKeys(keys);
-      return this;
-    }
-
-    public jQElement submit() {
-      if (we == null) {
-        return this;
-      }
-      getJs().executeScript("jQuery(arguments[0]).submit()", we);
-      return this;
-    }
-
-    public boolean is(String query) {
-      if (we == null) {
-        return false;
-      }
-      return (Boolean) getJs().executeScript("return jQuery(arguments[0]).is(arguments[1])", we, query);
-    }
-
-    public jQElement clear() {
-      return val("");
-    }
-
-    public jQElement sendKeys(String keys) {
-      return type(keys);
-    }
-
-    public WebElement ele() {
-      return we;
-    }
+    List<Object> refresh = (List<Object>) js("return [" + ref + ".length," + ref + ".selector]");
+    length = (Long) refresh.get(0);
+    selector = (String) refresh.get(1);
+    return this;
   }
 
-  protected boolean include() {
-    if ((Boolean) getJs().executeScript("return typeof jQuery != typeof __undefined")) {
-      return false;
-    }
+  public jQuery refreshUntilAtLeast(int min) throws TimeoutException {
+    return refreshUntilAtLeast(min, jqf.getDefaultTimeout());
+  }
 
-    long to = System.currentTimeMillis() + getDefaultTimeout();
-    while ((Boolean) getJs().executeScript("return typeof jQuery == typeof __undefined")) {
-      getJs().executeScript("" +
-        "var src = document.createElement('script');" +
-        "src.src='http://code.jquery.com/jquery-1.7.min.js';" +
-        "src.type='application/javascript';" +
-        "document.body.appendChild(src);");
+  public jQuery refreshUntil() throws TimeoutException {
+    return refreshUntilAtLeast(1, jqf.getDefaultTimeout());
+  }
+
+  public jQuery refreshUntil(long timeout) throws TimeoutException {
+    return refreshUntilAtLeast(1, timeout);
+  }
+
+  public jQuery refreshUntilAtLeast(int min, long timeout) throws TimeoutException {
+    return refreshUntil(min, -1, timeout);
+  }
+
+  public jQuery refreshUntilAtMost(int max, long timeout) throws TimeoutException {
+    return refreshUntil(0, max, timeout);
+  }
+
+  public jQuery refreshUntilAtMost(int max) throws TimeoutException {
+    return refreshUntil(0, max, jqf.getDefaultTimeout());
+  }
+
+  public jQuery refreshUntilNone(long timeout) throws TimeoutException {
+    return refreshUntil(0, 0, timeout);
+  }
+
+  public jQuery refreshUntil(int min, int max, long timeout) throws TimeoutException {
+    long to = System.currentTimeMillis() + timeout;
+    while (true) {
+      if (length() >= min) {
+        if (max == -1 || length() <= max) {
+          return this;
+        }
+      }
+
+      if (System.currentTimeMillis() > to) {
+        throw new TimeoutException("Looking for " + selector + " with " + min + " to " + max + " results.");
+      }
 
       try {
         Thread.sleep(200);
+        refresh();
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-      if (to < System.currentTimeMillis()) {
-        throw new RuntimeException("Timeout loading jquery");
+        throw new TimeoutException("Looking for " + selector + " with " + min + " to " + max + " results.");
       }
     }
-    return true;
   }
 
-  public static class NoSuchElementException extends Exception {
-
-    public NoSuchElementException(String msg) {
-      super(msg);
-    }
-
-    public NoSuchElementException(Throwable e) {
-      super(e);
-    }
-
-  }
-
-  public interface Transmuter<A, B> {
-    public B transmute(A from);
-  }
-
-  public <T> List<T> each(List<jQElement> query, Transmuter<jQElement, T> each) {
-    List<T> ret = new ArrayList<T>();
-    for (jQElement jq : query) {
-      ret.add(each.transmute(jq));
-    }
-    return ret;
-  }
-
-  public <T> List<T> each(String query, Transmuter<jQElement, T> each) {
-    List<T> ret = new ArrayList<T>();
-    for (jQElement jq : findAll(query)) {
-      ret.add(each.transmute(jq));
-    }
-    return ret;
+  public Long size() {
+    return length;
   }
 
   @SuppressWarnings("unchecked")
-  public List<jQElement> findAll(String query) {
-    List<jQElement> ret = new ArrayList<jQElement>();
-    // Tail call emulation
-    while (true) {
-      try {
-        for (WebElement we : (List<WebElement>) getJs().executeScript("return jQuery(arguments[0]).get()", query)) {
-          ret.add(new jQElement(query, we, js));
-        }
-      } catch (WebDriverException e) {
-        if (include()) {
-          // Tail call emulation
-          continue;
-        } else {
-          throw e;
-        }
+  public List<WebElement> toArray() {
+    return (List<WebElement>) jsret(".toArray()");
+  }
+
+  public WebElement get() {
+    return get(0);
+  }
+
+  public WebElement get(int index) {
+    return (WebElement) jsret(".get(" + index + ")");
+  }
+
+  public jQuery pushStack(WebElement ele) {
+    jsref(".pushStack(arguments[0])", ele);
+    refresh();
+    return this;
+  }
+
+  public jQuery each(Eacher inv) {
+    for (int i = 0; i < length; i++) {
+      inv.invoke(i, get(i));
+    }
+    return this;
+  }
+
+  public jQuery ready() {
+    jsref(".ready();");
+    return this;
+  }
+
+  public jQuery eq(int index) {
+    return slice(index, index + 1);
+  }
+
+  public jQuery first() {
+    return slice(0, 1);
+  }
+
+  public jQuery last() {
+    return slice(-1);
+  }
+
+  protected jQuery subset(String method_script, Object... args) {
+    jQuery subset = new jQuery(jqf, createRef(), null, this);
+    js(subset.ref + "=" + ref + method_script, args);
+    subset.refresh();
+    children.add(subset);
+    return subset;
+  }
+
+  public jQuery slice(int start, int end) {
+    return subset(".slice(arguments[0],arguments[1])", start, end);
+  }
+
+  public jQuery slice(int start) {
+    return subset(".slice(arguments[0])", start);
+  }
+
+  public <T> List<T> map(Mapper<T> mapper) {
+    ArrayList<T> lst = new ArrayList<T>();
+    for (int i = 0; i < length; i++) {
+      lst.add(mapper.invoke(i, get(i)));
+    }
+    return lst;
+  }
+
+  public jQuery end() {
+    close();
+    return this.parent;
+  }
+
+  public jQuery push(WebElement ele) {
+    return pushStack(ele);
+  }
+
+  public jQuery sort() {
+    jsref(".sort()");
+    return this;
+  }
+
+  public Object data(String key) {
+    return (Object) jsret(".data(arguments[0]);", key);
+  }
+
+  public jQuery data(String key, Object value) {
+    jsref(".data(arguments[0],arguments[1]);", key, value);
+    return this;
+  }
+
+  public jQuery removeData(String key) {
+    jsref(".removeData(arguments[0]", key);
+    return this;
+  }
+
+  public jQuery dequeue() {
+    jsref(".dequeue();");
+    return this;
+  }
+
+  public jQuery delay(long millis) {
+    jsref(".delay(arguments[0],'fx');", millis);
+    return this;
+  }
+
+  public jQuery delay(long millis, String queue_name) {
+    jsref(".delay(arguments[0],arguments[1]);", millis, queue_name);
+    return this;
+  }
+
+  public jQuery clearQueue(String queue_name) {
+    jsref(".clearQueue(arguments[0]);", queue_name);
+    return this;
+  }
+
+  public jQuery clearQueue() {
+    jsref(".clearQueue('fx');");
+    return this;
+  }
+
+  public String attr(String key) {
+    return (String) jsret(".attr(arguments[0]);", key);
+  }
+
+  public jQuery attr(String key, String value) {
+    jsref(".attr(arguments[0],arguments[1]);", key, value);
+    return this;
+  }
+
+  public jQuery removeAttr(String key) {
+    jsref(".removeAttr(arguments[0]);", key);
+    return this;
+  }
+
+  public jQuery addClass(String cls) {
+    jsref(".addClass(arguments[0]);", cls);
+    return this;
+  }
+
+  public jQuery removeClass(String cls) {
+    jsref(".removeClass(arguments[0]);", cls);
+    return this;
+  }
+
+  public jQuery toggleClass(String cls) {
+    jsref(".toggleClass(arguments[0]);", cls);
+    return this;
+  }
+
+  public jQuery hasClass(String cls) {
+    jsref(".hasClass(arguments[0]);", cls);
+    return this;
+  }
+
+  public String val() {
+    return (String) jsret(".val();");
+  }
+
+  public jQuery val(String val) {
+    jsref(".val(arguments[0]);", val);
+    return this;
+  }
+
+  public jQuery unbind(String event) {
+    jsref(".unbind(arguments[0]);", event);
+    return this;
+  }
+
+  public jQuery trigger(String event) {
+    jsref(".trigger(arguments[0]);", event);
+    return this;
+  }
+
+  public jQuery triggerHandler(String event) {
+    jsref(".triggerHandler(arguments[0]);", event);
+    return this;
+  }
+
+  public jQuery toggle() {
+    jsref(".toggle();");
+    return this;
+  }
+
+  public jQuery toggle(boolean toggle) {
+    jsref(".toggle(arguments[0]);", toggle);
+    return this;
+  }
+
+  public jQuery toggle(long duration) {
+    jsref(".toggle(arguments[0]);", duration);
+    return this;
+  }
+
+  public jQuery toggle(long duration, String easing) {
+    jsref(".toggle(arguments[0],arguments[1]);", duration, easing);
+    return this;
+  }
+
+  public jQuery die() {
+    jsref(".die();");
+    return this;
+  }
+
+  public jQuery die(String event) {
+    jsref(".die(arguments[0]);", event);
+    return this;
+  }
+
+  public jQuery blur() {
+    jsref(".blur();");
+    return this;
+  }
+
+  public jQuery focus() {
+    jsref(".focus();");
+    return this;
+  }
+
+  public jQuery focusin() {
+    jsref(".focusin();");
+    return this;
+  }
+
+  public jQuery focusout() {
+    jsref(".focusout();");
+    return this;
+  }
+
+  public jQuery load() {
+    jsref(".load();");
+    return this;
+  }
+
+  public jQuery resize() {
+    jsref(".resize();");
+    return this;
+  }
+
+  public jQuery scroll() {
+    jsref(".scroll();");
+    return this;
+  }
+
+  public jQuery unload() {
+    jsref(".unload();");
+    return this;
+  }
+
+  public jQuery click() {
+    jsref(".click();");
+    return this;
+  }
+
+  public jQuery dblclick() {
+    jsref(".dblclick();");
+    return this;
+  }
+
+  public jQuery mousedown() {
+    jsref(".mousedown();");
+    return this;
+  }
+
+  public jQuery mouseup() {
+    jsref(".mouseup();");
+    return this;
+  }
+
+  public jQuery mousemove() {
+    jsref(".mousemove();");
+    return this;
+  }
+
+  public jQuery mouseover() {
+    jsref(".mouseover();");
+    return this;
+  }
+
+  public jQuery mouseout() {
+    jsref(".mouseout();");
+    return this;
+  }
+
+  public jQuery mouseenter() {
+    jsref(".mouseenter();");
+    return this;
+  }
+
+  public jQuery mouseleave() {
+    jsref(".mouseleave();");
+    return this;
+  }
+
+  public jQuery change() {
+    jsref(".mousechange();");
+    return this;
+  }
+
+  public jQuery select() {
+    jsref(".select();");
+    return this;
+  }
+
+  public jQuery selected() {
+    return find(" :selected");
+  }
+
+  public jQuery submit() {
+    jsref(".submit();");
+    return this;
+  }
+
+  public jQuery keydown() {
+    jsref(".keydown();");
+    return this;
+  }
+
+  public jQuery keypress() {
+    jsref(".keypress();");
+    return this;
+  }
+
+  public jQuery keyup() {
+    jsref(".keyup();");
+    return this;
+  }
+
+  public jQuery error() {
+    jsref(".error();");
+    return this;
+  }
+
+  public jQuery find(String selector) {
+    return subset(".find(arguments[0]);", selector);
+  }
+
+  public Boolean has(String selector) {
+    return (Boolean) jsret(".has(arguments[0]);", selector);
+  }
+
+  public jQuery not(String selector) {
+    return subset(".not(arguments[0])", selector);
+  }
+
+  public jQuery filter(String selector) {
+    return subset(".not(arguments[0])", selector);
+  }
+
+  public Boolean is(jQuery jq) {
+    return (Boolean) jsret(".is(arguments[0]);", jq.ref);
+  }
+
+  public Boolean is(WebElement we) {
+    return (Boolean) jsret(".is(arguments[0]);", we);
+  }
+
+  public Boolean is(String selector) {
+    return (Boolean) jsret(".is(arguments[0]);", selector);
+  }
+
+  public jQuery closest(String selector) {
+    return subset(".closest(arguments[0])", selector);
+  }
+
+  /**
+   * The return value is an integer indicating the position of the first element
+   * within the jQuery object relative to its sibling elements.
+   * 
+   * @see http://api.jquery.com/index/
+   * @return
+   */
+  public Integer index() {
+    return (Integer) jsret(".index();");
+  }
+
+  /**
+   * Returns an integer indicating the position of the original element relative
+   * to the elements matched by the selector. If the element is not found, 
+   * .index() will return -1.
+   * 
+   * @see http://api.jquery.com/index/
+   * @return
+   */
+  public Integer index(String selector) {
+    return (Integer) jsret(".index(arguments[0]);", selector);
+  }
+
+  /**
+   * Returns an integer indicating the position of the passed element relative 
+   * to the original collection.
+   * 
+   * @see http://api.jquery.com/index/
+   * @return
+   */
+  public Integer index(WebElement we) {
+    return (Integer) jsret(".index(arguments[0]);", we);
+  }
+
+  /**
+   * Adds the html to the current set of elements
+   * 
+   * @return
+   */
+  public jQuery addHtml(String html) {
+    jsref(".add(arguments[0]);", html);
+    return this;
+  }
+
+  /**
+   * Adds the matched elements to the current set of elements
+   * 
+   * @return
+   */
+  public jQuery add(String selector) {
+    jsref(".add(arguments[0]);", selector);
+    return this;
+  }
+
+  /**
+   * Adds the set to the current set of elements
+   * 
+   * @return
+   */
+  public jQuery add(jQuery jq) {
+    jsref(".add(" + jq.ref + ");");
+    return this;
+  }
+
+  public jQuery andSelf() {
+    return subset(".andSelf()");
+  }
+
+  public jQuery parent() {
+    return subset(".parent()");
+  }
+
+  public jQuery parent(String selector) {
+    return subset(".parent(arguments[0])", selector);
+  }
+
+  public jQuery parents() {
+    return subset(".parents()");
+  }
+
+  public jQuery parents(String selector) {
+    return subset(".parents(arguments[0])", selector);
+  }
+
+  public jQuery parentsUntil(String selector) {
+    return subset(".parentsUntil(arguments[0])", selector);
+  }
+
+  public jQuery parentsUntil(WebElement we) {
+    return subset(".parentsUntil(arguments[0])", we);
+  }
+
+  public jQuery parentsUntil(WebElement we, String filter) {
+    return subset(".parentsUntil(arguments[0],arguments[1])", we, filter);
+  }
+
+  public jQuery parentsUntil(String selector, String filter) {
+    return subset(".parentsUntil(arguments[0],arguments[1])", selector, filter);
+  }
+
+  public jQuery next(String filter) {
+    return subset(".next(arguments[0])", filter);
+  }
+
+  public jQuery next() {
+    return subset(".next()");
+  }
+
+  public jQuery prev(String filter) {
+    return subset(".prev(arguments[0])", filter);
+  }
+
+  public jQuery prev() {
+    return subset(".prev()");
+  }
+
+  public jQuery nextAll(String filter) {
+    return subset(".nextAll(arguments[0])", filter);
+  }
+
+  public jQuery nextAll() {
+    return subset(".nextAll()");
+  }
+
+  public jQuery prevAll(String filter) {
+    return subset(".prevAll(arguments[0])", filter);
+  }
+
+  public jQuery prevAll() {
+    return subset(".prev()");
+  }
+
+  public jQuery nextUntil(String selector) {
+    return subset(".nextUntil(arguments[0])", selector);
+  }
+
+  public jQuery nextUntil(String selector, String filter) {
+    return subset(".nextUntil(arguments[0],arguments[1])", selector, filter);
+  }
+
+  public jQuery nextUntil(WebElement we) {
+    return subset(".nextUntil(arguments[0])", we);
+  }
+
+  public jQuery nextUntil(WebElement we, String filter) {
+    return subset(".nextUntil(arguments[0],arguments[1])", we, filter);
+  }
+
+  public jQuery prevUntil(String selector) {
+    return subset(".prevUntil(arguments[0])", selector);
+  }
+
+  public jQuery prevUntil(String selector, String filter) {
+    return subset(".prevUntil(arguments[0],arguments[1])", selector, filter);
+  }
+
+  public jQuery prevUntil(WebElement we) {
+    return subset(".prevUntil(arguments[0])", we);
+  }
+
+  public jQuery prevUntil(WebElement we, String filter) {
+    return subset(".prevUntil(arguments[0],arguments[1])", we, filter);
+  }
+
+  public jQuery siblings(String selector) {
+    return subset(".siblings(arguments[0])", selector);
+  }
+
+  public jQuery siblings() {
+    return subset(".siblings()");
+  }
+
+  public jQuery children() {
+    return subset(".children()");
+  }
+
+  public jQuery children(String selector) {
+    return subset(".children(arguments[0])", selector);
+  }
+
+  public jQuery contents() {
+    return subset(".contents()");
+  }
+
+  public jQuery text(String text) {
+    jsref(".text(arguments[0]);", text);
+    return this;
+  }
+
+  public String text() {
+    return (String) jsret(".text();");
+  }
+
+  public jQuery wrapAllHtml(String html) {
+    jsref(".wrapAll(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery wrapAll(String selector) {
+    jsref(".wrapAll(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery wrapAll(WebElement we) {
+    jsref(".wrapAll(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery wrapAll(jQuery jq) {
+    jsref(".wrapAll(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery wrapInnerHtml(String html) {
+    jsref(".wrapInner(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery wrapInner(String selector) {
+    jsref(".wrapInner(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery wrapInner(WebElement we) {
+    jsref(".wrapInner(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery wrapInner(jQuery jq) {
+    jsref(".wrapInner(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery wrapHtml(String html) {
+    jsref(".wrap(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery wrap(String selector) {
+    jsref(".wrap(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery wrap(WebElement we) {
+    jsref(".wrap(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery wrap(jQuery jq) {
+    jsref(".wrap(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery unwrapHtml(String html) {
+    jsref(".unwrap(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery unwrap(String selector) {
+    jsref(".unwrap(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery unwrap(WebElement we) {
+    jsref(".unwrap(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery unwrap(jQuery jq) {
+    jsref(".unwrap(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery appendHtml(String html) {
+    jsref(".append(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery append(String selector) {
+    jsref(".append(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery append(WebElement we) {
+    jsref(".append(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery append(jQuery jq) {
+    jsref(".append(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery prependHtml(String html) {
+    jsref(".prepend(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery prepend(String selector) {
+    jsref(".prepend(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery prepend(WebElement we) {
+    jsref(".prepend(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery prepend(jQuery jq) {
+    jsref(".prepend(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery beforeHtml(String html) {
+    jsref(".before(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery before(String selector) {
+    jsref(".before(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery before(WebElement we) {
+    jsref(".before(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery before(jQuery jq) {
+    jsref(".before(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery afterHtml(String html) {
+    jsref(".after(arguments[0])", html);
+    return this;
+  }
+
+  public jQuery after(String selector) {
+    jsref(".after(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery after(WebElement we) {
+    jsref(".after(arguments[0])", we);
+    return this;
+  }
+
+  public jQuery after(jQuery jq) {
+    jsref(".after(" + jq.ref + ")");
+    return this;
+  }
+
+  public jQuery remove() {
+    jsref(".remove()");
+    return this;
+  }
+
+  public jQuery remove(String selector) {
+    jsref(".remove(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery empty() {
+    jsref(".empty()");
+    return this;
+  }
+
+  public jQuery clone() {
+    return subset(".clone()");
+  }
+
+  public jQuery clone(boolean with_data_and_events) {
+    return subset(".clone(arguments[0])", with_data_and_events);
+  }
+
+  public jQuery clone(boolean with_data_and_events, boolean deep) {
+    return subset(".clone(arguments[0],arguments[1])", with_data_and_events, deep);
+  }
+
+  public String html() {
+    return (String) jsret(".html();");
+  }
+
+  public jQuery html(String html) {
+    jsref(".html(arguments[0]);", html);
+    return this;
+  }
+
+  public jQuery replaceWithHtml(String html) {
+    return subset(".replaceWith(arguments[0])", html);
+  }
+
+  public jQuery replaceWith(String selector) {
+    return subset(".replaceWith(arguments[0])", selector);
+  }
+
+  public jQuery replaceWith(WebElement we) {
+    return subset(".replaceWith(arguments[0])", we);
+  }
+
+  public jQuery replaceWith(jQuery jq) {
+    return subset(".replaceWith(" + jq.ref + ")");
+  }
+
+  public jQuery detach() {
+    jsref(".detatch()");
+    return this;
+  }
+
+  public jQuery detach(String selector) {
+    jsref(".detatch(arguments[0])", selector);
+    return this;
+  }
+
+  public jQuery appendToHtml(String html) {
+    return subset(".appendTo(arguments[0])", html);
+  }
+
+  public jQuery appendTo(String selector) {
+    return subset(".appendTo(arguments[0])", selector);
+  }
+
+  public jQuery appendTo(WebElement we) {
+    return subset(".appendTo(arguments[0])", we);
+  }
+
+  public jQuery appendTo(jQuery jq) {
+    return subset(".appendTo(" + jq.ref + ")");
+  }
+
+  public jQuery prependToHtml(String html) {
+    return subset(".prependTo(arguments[0])", html);
+  }
+
+  public jQuery prependTo(String selector) {
+    return subset(".prependTo(arguments[0])", selector);
+  }
+
+  public jQuery prependTo(WebElement we) {
+    return subset(".prependTo(arguments[0])", we);
+  }
+
+  public jQuery prependTo(jQuery jq) {
+    return subset(".prependTo(" + jq.ref + ")");
+  }
+
+  public jQuery insertBeforeHtml(String html) {
+    return subset(".insertBefore(arguments[0])", html);
+  }
+
+  public jQuery insertBefore(String selector) {
+    return subset(".insertBefore(arguments[0])", selector);
+  }
+
+  public jQuery insertBefore(WebElement we) {
+    return subset(".insertBefore(arguments[0])", we);
+  }
+
+  public jQuery insertBefore(jQuery jq) {
+    return subset(".insertBefore(" + jq.ref + ")");
+  }
+
+  public jQuery insertAfterHtml(String html) {
+    return subset(".insertAfter(arguments[0])", html);
+  }
+
+  public jQuery insertAfter(String selector) {
+    return subset(".insertAfter(arguments[0])", selector);
+  }
+
+  public jQuery insertAfter(WebElement we) {
+    return subset(".insertAfter(arguments[0])", we);
+  }
+
+  public jQuery insertAfter(jQuery jq) {
+    return subset(".insertAfter(" + jq.ref + ")");
+  }
+
+  public jQuery replaceAll(String selector) {
+    return subset(".replaceAll(arguments[0])", selector);
+  }
+
+  public String css(String key) {
+    return (String) jsret(".css(arguments[0])", key);
+  }
+
+  public jQuery css(String key, String val) {
+    jsref(".css(arguments[0],arguments[1])", key, val);
+    return this;
+  }
+
+  public String serialize() {
+    return (String) jsret(".serialize()");
+  }
+
+  public jQuery show() {
+    jsref(".show()");
+    return this;
+  }
+
+  public jQuery hide() {
+    jsref(".hide()");
+    return this;
+  }
+
+  public jQuery stop() {
+    jsref(".stop()");
+    return this;
+  }
+
+  public jQuery slideDown() {
+    jsref(".slideDown()");
+    return this;
+  }
+
+  public jQuery slideUp() {
+    jsref(".slideUp()");
+    return this;
+  }
+
+  public jQuery slideToggle() {
+    jsref(".slideToggle()");
+    return this;
+  }
+
+  public jQuery fadeIn() {
+    jsref(".fadeIn()");
+    return this;
+  }
+
+  public jQuery fadeOut() {
+    jsref(".fadeOut()");
+    return this;
+  }
+
+  public jQuery fadeToggle() {
+    jsref(".fadeToggle()");
+    return this;
+  }
+
+  public static class Position {
+    public final int top;
+    public final int left;
+
+    public Position(int top, int left) {
+      this.top = top;
+      this.left = left;
+    }
+  }
+
+  public Position offset() {
+    @SuppressWarnings("unchecked")
+    List<Integer> offset = (List<Integer>) js("var offset = " + ref + ".offset()" +
+      "return [offset.top,offset.left];");
+    return new Position(offset.get(0), offset.get(1));
+  }
+
+  public Position position() {
+    @SuppressWarnings("unchecked")
+    List<Integer> position = (List<Integer>) js("var position = " + ref + ".position()" +
+      "return [position.top,position.left];");
+    return new Position(position.get(0), position.get(1));
+  }
+
+  public Position offsetParent() {
+    @SuppressWarnings("unchecked")
+    List<Integer> offset = (List<Integer>) js("var offset = " + ref + ".offsetParent()" +
+      "return [offset.top,offset.left];");
+    return new Position(offset.get(0), offset.get(1));
+  }
+
+  public Integer scrollLeft() {
+    return (Integer) jsret(".scrollLeft()");
+  }
+
+  public jQuery scrollLeft(int left) {
+    jsref(".scrollLeft(arguments[0])", left);
+    return this;
+  }
+
+  public Integer scrollTop() {
+    return (Integer) jsret(".scrollTop()");
+  }
+
+  public jQuery scrollTop(int top) {
+    jsref(".scrollTop(arguments[0])", top);
+    return this;
+  }
+
+  public Integer innerHeight() {
+    return (Integer) jsret(".innerHeight()");
+  }
+
+  public Integer outerHeight() {
+    return (Integer) jsret(".outerHeight()");
+  }
+
+  public Integer height() {
+    return (Integer) jsret(".height()");
+  }
+
+  public jQuery height(int height) {
+    jsref(".height(arguments[0])", height);
+    return this;
+  }
+
+  public Integer innerWidth() {
+    return (Integer) jsret(".innerWidth()");
+  }
+
+  public Integer outerWidth() {
+    return (Integer) jsret(".outerWidth()");
+  }
+
+  public Integer width() {
+    return (Integer) jsret(".width()");
+  }
+
+  public jQuery width(int width) {
+    jsref(".width(arguments[0])", width);
+    return this;
+  }
+
+  public jQuery enable() {
+    removeAttr("disabled");
+    return this;
+  }
+
+  public jQuery disable() {
+    attr("disabled", "disabled");
+    return this;
+  }
+
+  public void close() {
+    if (!closed) {
+      js("delete " + ref);
+      closed = true;
+      for (jQuery child : children) {
+        child.close();
       }
-      return ret;
     }
   }
 
-  public int count(String query) {
-    return ((Long) getJs().executeScript("return jQuery(arguments[0]).size()", query)).intValue();
-  }
-
-  public List<jQElement> waitUntilLessThan(String query, int too_many) {
-    return waitUntilLessThan(query, too_many, getDefaultTimeout());
-  }
-
-  public List<jQElement> waitUntilLessThan(String query, int too_many, long timeout) {
-    try {
-      return waitUntilLessThanSafe(query, too_many, timeout);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
+  public String toString() {
+    if (selector != null) {
+      return "$(" + selector + ")[" + length + "]";
+    } else {
+      return "$(object)[" + length + "]";
     }
   }
 
-  public List<jQElement> waitUntilLessThanSafe(String query, int too_many) throws TimeoutException {
-    return waitUntilLessThanSafe(query, too_many, getDefaultTimeout());
-  }
+  @Override
+  public Iterator<WebElement> iterator() {
+    return new Iterator<WebElement>() {
+      int i = 0;
 
-  public List<jQElement> waitUntilLessThanSafe(String query, int too_many, long timeout) throws TimeoutException {
-    long to = System.currentTimeMillis() + timeout;
-    while (true) {
-      List<jQElement> ret = findAll(query);
-      if (ret.size() < too_many) {
-        return ret;
-      }
-      if (System.currentTimeMillis() > to) {
-        throw new TimeoutException();
-      }
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
-  public List<jQElement> waitUntilMoreThan(String query, int max) {
-    try {
-      return waitUntilMoreThanSafe(query, max);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public List<jQElement> waitUntilMoreThanSafe(String query, int max) throws TimeoutException {
-    return waitUntilMoreThanSafe(query, max, getDefaultTimeout());
-  }
-
-  public List<jQElement> waitUntilMoreThanSafe(String query, int more_than, long timeout) throws TimeoutException {
-    long to = System.currentTimeMillis() + timeout;
-    while (true) {
-      List<jQElement> ret = findAll(query);
-      if (ret.size() > more_than) {
-        return ret;
+      @Override
+      public void remove() {
+        throw new IllegalAccessError("Not implemented");
       }
 
-      if (System.currentTimeMillis() > to) {
-        throw new TimeoutException();
+      @Override
+      public WebElement next() {
+        return get(i++);
       }
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+
+      @Override
+      public boolean hasNext() {
+        return i < length;
       }
-    }
+    };
   }
-
-  public jQElement findSafe(String query) throws NoSuchElementException {
-    jQElement ret = find(query);
-    if (ret.we == null) {
-      throw new NoSuchElementException(query);
-    }
-    return ret;
-  }
-
-  public jQElement find(String query, Object... args) {
-    try {
-      WebElement we = (WebElement) getJs().executeScript("return jQuery(arguments[0]).get(0)", String.format(query, args));
-      return new jQElement(query, we, js);
-    } catch (WebDriverException e) {
-      if (!include()) {
-        throw e;
-      } else {
-        return find(query, args);
-      }
-    }
-  }
-
-  public jQElement findOrWait(String query) {
-    return findAllOrWait(query, 1).get(0);
-  }
-
-  public jQElement findOrWait(String query, long timeout) {
-    return findAllOrWait(query, 1, timeout).get(0);
-  }
-
-  public jQElement findOrWaitSafe(String query) throws NoSuchElementException {
-    try {
-      return findAllOrWaitSafe(query, 1).get(0);
-    } catch (TimeoutException e) {
-      throw new NoSuchElementException(e);
-    }
-  }
-
-  public List<jQElement> findAllOrWait(String query) {
-    return findAllOrWait(query, 1);
-  }
-
-  public List<jQElement> findAllOrWait(String query, int min) {
-    try {
-      return findAllOrWaitSafe(query, min);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public List<jQElement> findAllOrWait(String query, int min, long timeout) {
-    try {
-      return findAllOrWaitSafe(query, min, timeout);
-    } catch (TimeoutException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public ChangeWatch watch(String query, Object... args) {
-    return new ChangeWatch(this, String.format(query, args));
-  }
-
-  public jQElement findOrWaitSafe(String query, long timeout) throws NoSuchElementException {
-    try {
-      return findAllOrWaitSafe(query, 1, timeout).get(0);
-    } catch (TimeoutException e) {
-      throw new NoSuchElementException(e);
-    }
-  }
-
-  public List<jQElement> findAllOrWaitSafe(String query, int min) throws TimeoutException {
-    return findAllOrWaitSafe(query, min, getDefaultTimeout());
-  }
-
-  public List<jQElement> findAllOrWaitSafe(String query, int min, long timeout) throws TimeoutException {
-    long to = System.currentTimeMillis() + timeout;
-    while (true) {
-      List<jQElement> ret = findAll(query);
-      if (ret.size() >= min) {
-        return ret;
-      }
-      if (to < System.currentTimeMillis()) {
-        throw new TimeoutException("Timeout waiting for query: " + query + " to return at least " + min + " element(s).");
-      }
-    }
-  }
-
-  public static class ChangeWatch {
-    private List<jQElement> first;
-    private List<String> html;
-    private jQuery jq;
-    private String query;
-    private static AtomicInteger count = new AtomicInteger(0);
-
-    public ChangeWatch(jQuery jq, String query) {
-      this.jq = jq;
-      this.query = query;
-      save();
-
-    }
-
-    public ChangeWatch save() {
-      first = jq.findAll(query);
-      html = new ArrayList<String>();
-      for (jQElement we : first) {
-        try {
-          html.add(we.html() + "-" + we.val());
-        } catch (StaleElementReferenceException e) {
-          html.add("uniq" + count.incrementAndGet() + "fefexxx");
-        }
-      }
-      return this;
-    }
-
-    public ChangeWatch(String query, JavascriptExecutor drv) {
-      this(new jQuery(drv), query);
-    }
-
-    public List<jQElement> waitUntilChanged(int minimum) {
-      return waitUntilChanged(getDefaultTimeout(), minimum);
-    }
-
-    public List<jQElement> waitUntilChanged(long timeout) {
-      return waitUntilChanged(timeout, 0);
-    }
-
-    public List<jQElement> waitUntilChanged() {
-      return waitUntilChanged(getDefaultTimeout(), 0);
-    }
-
-    public List<jQElement> waitUntilChanged(long timeout, int minimum) {
-      try {
-        return waitUntilChangedSafe(timeout, minimum);
-      } catch (TimeoutException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    private long defaultTimeout = 30000;
-
-    public long getDefaultTimeout() {
-      return defaultTimeout;
-    }
-
-    public ChangeWatch setDefaultTimeout(long defaultTimeout) {
-      this.defaultTimeout = defaultTimeout;
-      return this;
-    }
-
-    public List<jQElement> waitUntilChangedSafe() throws TimeoutException {
-      return waitUntilChangedSafe(getDefaultTimeout());
-    }
-
-    public List<jQElement> waitUntilChangedSafe(long timeout) throws TimeoutException {
-      return waitUntilChangedSafe(timeout, 0);
-    }
-
-    public List<jQElement> waitUntilChangedSafe(int minimum) throws TimeoutException {
-      return waitUntilChangedSafe(getDefaultTimeout(), minimum);
-    }
-
-    public List<jQElement> waitUntilChangedSafe(long timeout, int minimum) throws TimeoutException {
-      final long to = System.currentTimeMillis() + timeout;
-      while (true) {
-        List<jQElement> changed = jq.findAll(query);
-        if (changed.size() >= minimum) {
-          // Simple size check
-          if (changed.size() != first.size()) {
-            return changed;
-          }
-
-          // Detailed check
-          for (int i = 0; i < first.size(); i++) {
-            jQElement ch = changed.get(i);
-            jQElement fs = first.get(i);
-
-            // Sub element equality
-            if (!ch.equals(fs)) {
-              return changed;
-            }
-
-            // Raw text check
-            String ch_text = ch.html() + "-" + ch.val();
-            if (!ch_text.equals(html.get(i))) {
-              return changed;
-            }
-          }
-        }
-        if (System.currentTimeMillis() > to) {
-          throw new TimeoutException();
-        }
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          throw new TimeoutException();
-        }
-      }
-    }
-
-    public String getQuery() {
-      return query;
-    }
-  }
-
 }
