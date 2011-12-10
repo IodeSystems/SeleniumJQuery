@@ -299,7 +299,7 @@ public class jQuery implements Iterable<WebElement> {
   }
 
   public String attr(String key) {
-    return (String) jsret(".attr(arguments[0]);", key);
+    return String.valueOf(jsret(".attr(arguments[0]);", key));
   }
 
   public jQuery attr(String key, String value) {
@@ -534,7 +534,7 @@ public class jQuery implements Iterable<WebElement> {
     return (Boolean) jsret(".is(arguments[0]);", we);
   }
 
-  public Boolean is(String selector) {
+  public boolean is(String selector) {
     return (Boolean) jsret(".is(arguments[0]);", selector);
   }
 
@@ -1188,7 +1188,7 @@ public class jQuery implements Iterable<WebElement> {
 
   public String toString() {
     if (selector != null) {
-      return "$(" + selector + ")[" + length + "]:"+ref;
+      return "$(" + selector + ")[" + length + "]:" + ref;
     } else {
       return "$(object)[" + length + "]:" + ref;
     }
