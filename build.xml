@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
+<!-- 
+
+VERSION 1.0
+
+ChangeLog
+===================
+* Fixed test compiling/locations
+* Added a build-update task to re-download this gist.
+* Added an example source location
 
 Overview:
 ====================
@@ -352,7 +360,7 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 					</classpath>
 					<formatter type="plain" usefile="false" />
 					<batchtest>
-						<fileset dir="${build.dir}" includes="**/*.class" />
+						<fileset dir="${test.dir}" includes="**/*.java" />
 					</batchtest>
 				</junit>
 			</then>
@@ -390,5 +398,10 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 				<echo message="Deployment not configured through deploy.xml or deploy properties: deploy.user, deploy.host, deploy.dir, deploy.cmd" />
 			</else>
 		</if>
+	</target>
+
+	<!-- Updates the build file from the repository whence it came! -->
+	<target name="build-update">
+		<get src="https://raw.github.com/gist/1401567/build.xml" dest="build.xml" />
 	</target>
 </project>

@@ -14,10 +14,15 @@ public class jQueryTest {
 
   @Before
   public void init() {
+    // HtmlUnitDriver is a yenta -- QUIET YENTA, QUIET!
+    System.setProperty("org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog");
+    System.setProperty("org.apache.commons.logging.simplelog.log.com.gargoylesoftware.htmlunit","fatal");
+    
     HtmlUnitDriver drv = new HtmlUnitDriver();
     drv.setJavascriptEnabled(true);
     drv.get("http://jquery.com/");
     jq = new jQueryFactory(drv);
+    
   }
 
   @Test
@@ -39,7 +44,6 @@ public class jQueryTest {
   @Test
   public void dataAndAttributes() {
     jQuery logo_link = jq.query("#jq-siteLogo");
-    System.out.println(logo_link.attr("href"));
     assertEquals("http://jquery.com", logo_link.attr("href"));
     assertEquals("215", logo_link.find("img").attr("width"));
     logo_link.addClass("test");
