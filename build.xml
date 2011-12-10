@@ -111,6 +111,7 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 	<property name="src.dir" location="src" />
 	<property name="test.dir" location="test" />
 	<property name="gen.dir" location="gen" />
+	<property name="example.dir" location="example" />
 	<property name="res.dir" location="res" />
 	<property name="lib.dir" location="lib" />
 	<property name="build.dir" location="build" />
@@ -260,16 +261,26 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 				<include name="**/*.jar" />
 			</fileset>
 		</path>
+
+		<var name="srcs" value="${src.dir}" />
+
+		<!-- Include gen if it is here -->
 		<if>
 			<available file="${gen.dir}" type="dir" />
 			<then>
-				<property name="java.src.dirs" value="${src.dir};${gen.dir}" />
+				<var name="srcs" value="${srcs};${gen.dir}" />
 			</then>
-			<else>
-				<property name="java.src.dirs" value="${src.dir}" />
-			</else>
 		</if>
-		<javac srcdir="${java.src.dirs}" destdir="${build.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
+
+		<!-- Include example if it is here -->
+		<if>
+			<available file="${example.dir}" type="dir" />
+			<then>
+				<var name="srcs" value="${srcs};${example.dir}" />
+			</then>
+		</if>
+
+		<javac srcdir="${srcs}" destdir="${build.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
 	</target>
 
 	<!-- Copies the non sources/docs jars alongside the the release jar -->

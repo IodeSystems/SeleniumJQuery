@@ -1,17 +1,44 @@
 About
 ==================
-Selenium is great for unit testing, but not so great for scraping. A lot of
-times, you need to access invisible elements, run javascript, load jquery, and
-have a much friendlier/evented way of interacting with a site -- This is it.
+Selenium is decent, but it's not great. It's a pain to deal with, and doesn't 
+treat it's users like programmers. It just operates on a level that simply 
+emulates real browsers. Which is nice.
+
+Sometimes -- Usually, you want more. Most developers who have used jQuery know
+how awesome it is at dealing with managing, examining, and manipulating dom 
+structures, yet -- It's not always available, and no good api exists for using
+it reliably within Selenium -- Until now. 
 
 Install
 ==================
-Just check out the project, and run ant dist. It should generate it's ivy artifact in the ./dist folder. Also, it will install into your ivy cache.
+  1. Check out the project with git.
+  2. Build the project
+  3. Test the project
+  4. Run the example
+  
+  	$ git clone git@github.com:Nthalk/SeleniumJQuery.git
+  	$ cd SeleniumJQuery
+  	$ ant test
+  	$ cd dist
+  	$ java -jar SeleniumJQuery.jar
+  	
+Note: if selenium could not find a suitable firefox profile, point it to one 
+with -Dwebdriver.firefox.bin. I installed firefox-5.0 in a special place and use
+-Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox, so my cmd
+looks more like
+
+    java -Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox -jar SeleniumJQuery.jar 
 
 Using as a Library
 ==================
 After installing, you can reference it as an ivy library as it will be in your
-ivy cache -- Check the ./dist/ivy.xml to see what the org, module, and rev should be set to!
+ivy cache. It does not currently have a home on any maven/ivy repos.
+
+For the current revision, your ivy.xml should have a dependency of:
+	<dependency org="com.anteambulo" name="SeleniumJQuery" rev="0.1"/>
+	
+Or you could just build it and drop the dist dependency jars and the 
+SeleniumJQuery jar in your classpath.
 
 Requirements
 ==================
