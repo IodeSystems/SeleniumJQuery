@@ -11,23 +11,17 @@ it reliably within Selenium -- Until now.
 
 Install
 ==================
-  1. Check out the project with git.
-  2. Build the project
-  3. Test the project
-  4. Run the example
-  
-  	$ git clone git@github.com:Nthalk/SeleniumJQuery.git
-  	$ cd SeleniumJQuery
-  	$ ant test
-  	$ cd dist
-  	$ java -jar SeleniumJQuery.jar
+	$ git clone git@github.com:Nthalk/SeleniumJQuery.git # Checkout project
+	$ cd SeleniumJQuery                                  # Step into dir
+	$ ant test                                           # Build/test
+	$ cd dist                                            # Step into dist dir
+	$ java -jar SeleniumJQuery.jar                       # Run example
   	
 Note: if selenium could not find a suitable firefox profile, point it to one 
 with -Dwebdriver.firefox.bin. I installed firefox-5.0 in a special place and use
 -Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox, so my cmd
-looks more like
-
-    java -Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox -jar SeleniumJQuery.jar 
+looks more like:
+	$ java -Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox -jar SeleniumJQuery.jar 
 
 Using as a Library
 ==================
@@ -44,3 +38,7 @@ Requirements
 ==================
 The only requirement is ant, as everything else should be pulled in by ant.
 
+Example
+==================
+Please see: https://github.com/Nthalk/SeleniumJQuery/blob/master/example/com/anteambulo/SeleniumJQuery/example/Example.java
+for a sweet example!
