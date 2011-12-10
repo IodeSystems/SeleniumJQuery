@@ -8,7 +8,35 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 
 public class jQueryFactory {
-
+  
+  public static class Until{
+    private long timeout;
+    public Until(long until) {
+      timeout = System.currentTimeMillis() + until;
+    }
+    public boolean checkWait(){
+      if(check()){
+        try {
+          Thread.sleep(200);
+          return true;
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      return false;
+    }
+    
+    public void checkWaitSafe() throws TimeoutException{
+      if(!checkWait()){
+        throw new TimeoutException();
+      }
+    }
+    
+    public boolean check(){
+      return System.currentTimeMillis() < timeout;
+    }
+  }
+  
   private JavascriptExecutor js;
   private long defaultTimeout = 30000L;
   private final AtomicLong id_factory = new AtomicLong();
@@ -23,6 +51,14 @@ public class jQueryFactory {
 
   public jQueryFactory(JavascriptExecutor js) {
     this.js = js;
+  }
+  
+  public Until until(){
+    return until(getDefaultTimeout());
+  }
+  
+  public Until until(long timeout){
+    return new Until(timeout);
   }
 
   public jQueryFactory() {

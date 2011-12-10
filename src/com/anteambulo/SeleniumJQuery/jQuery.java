@@ -101,7 +101,7 @@ public class jQuery implements Iterable<WebElement> {
       close();
     }
     closed = false;
-    jsref("= jQuery(arguments[0]);", selector);
+    jsref(" = jQuery(arguments[0]);", selector);
     refresh();
     return this;
   }
@@ -549,8 +549,8 @@ public class jQuery implements Iterable<WebElement> {
    * @see http://api.jquery.com/index/
    * @return
    */
-  public Integer index() {
-    return (Integer) jsret(".index();");
+  public Long index() {
+    return (Long) jsret(".index();");
   }
 
   /**
@@ -561,8 +561,8 @@ public class jQuery implements Iterable<WebElement> {
    * @see http://api.jquery.com/index/
    * @return
    */
-  public Integer index(String selector) {
-    return (Integer) jsret(".index(arguments[0]);", selector);
+  public Long index(String selector) {
+    return (Long) jsret(".index(arguments[0]);", selector);
   }
 
   /**
@@ -572,8 +572,8 @@ public class jQuery implements Iterable<WebElement> {
    * @see http://api.jquery.com/index/
    * @return
    */
-  public Integer index(WebElement we) {
-    return (Integer) jsret(".index(arguments[0]);", we);
+  public Long index(WebElement we) {
+    return (Long) jsret(".index(arguments[0]);", we);
   }
 
   /**
@@ -1084,10 +1084,10 @@ public class jQuery implements Iterable<WebElement> {
   }
 
   public static class Position {
-    public final int top;
-    public final int left;
+    public final Long top;
+    public final Long left;
 
-    public Position(int top, int left) {
+    public Position(Long top, Long left) {
       this.top = top;
       this.left = left;
     }
@@ -1095,27 +1095,27 @@ public class jQuery implements Iterable<WebElement> {
 
   public Position offset() {
     @SuppressWarnings("unchecked")
-    List<Integer> offset = (List<Integer>) js("var offset = " + ref + ".offset()" +
+    List<Long> offset = (List<Long>) js("var offset = " + ref + ".offset();" +
       "return [offset.top,offset.left];");
     return new Position(offset.get(0), offset.get(1));
   }
 
   public Position position() {
     @SuppressWarnings("unchecked")
-    List<Integer> position = (List<Integer>) js("var position = " + ref + ".position()" +
+    List<Long> position = (List<Long>) js("var position = " + ref + ".position();" +
       "return [position.top,position.left];");
     return new Position(position.get(0), position.get(1));
   }
 
   public Position offsetParent() {
     @SuppressWarnings("unchecked")
-    List<Integer> offset = (List<Integer>) js("var offset = " + ref + ".offsetParent()" +
+    List<Long> offset = (List<Long>) js("var offset = " + ref + ".offsetParent();" +
       "return [offset.top,offset.left];");
     return new Position(offset.get(0), offset.get(1));
   }
 
-  public Integer scrollLeft() {
-    return (Integer) jsret(".scrollLeft()");
+  public Long scrollLeft() {
+    return (Long) jsret(".scrollLeft()");
   }
 
   public jQuery scrollLeft(int left) {
@@ -1123,8 +1123,8 @@ public class jQuery implements Iterable<WebElement> {
     return this;
   }
 
-  public Integer scrollTop() {
-    return (Integer) jsret(".scrollTop()");
+  public Long scrollTop() {
+    return (Long) jsret(".scrollTop()");
   }
 
   public jQuery scrollTop(int top) {
@@ -1132,16 +1132,16 @@ public class jQuery implements Iterable<WebElement> {
     return this;
   }
 
-  public Integer innerHeight() {
-    return (Integer) jsret(".innerHeight()");
+  public Long innerHeight() {
+    return (Long) jsret(".innerHeight()");
   }
 
-  public Integer outerHeight() {
-    return (Integer) jsret(".outerHeight()");
+  public Long outerHeight() {
+    return (Long) jsret(".outerHeight()");
   }
 
-  public Integer height() {
-    return (Integer) jsret(".height()");
+  public Long height() {
+    return (Long) jsret(".height()");
   }
 
   public jQuery height(int height) {
@@ -1149,16 +1149,16 @@ public class jQuery implements Iterable<WebElement> {
     return this;
   }
 
-  public Integer innerWidth() {
-    return (Integer) jsret(".innerWidth()");
+  public Long innerWidth() {
+    return (Long) jsret(".innerWidth()");
   }
 
-  public Integer outerWidth() {
-    return (Integer) jsret(".outerWidth()");
+  public Long outerWidth() {
+    return (Long) jsret(".outerWidth()");
   }
 
-  public Integer width() {
-    return (Integer) jsret(".width()");
+  public Long width() {
+    return (Long) jsret(".width()");
   }
 
   public jQuery width(int width) {
@@ -1188,9 +1188,9 @@ public class jQuery implements Iterable<WebElement> {
 
   public String toString() {
     if (selector != null) {
-      return "$(" + selector + ")[" + length + "]";
+      return "$(" + selector + ")[" + length + "]:"+ref;
     } else {
-      return "$(object)[" + length + "]";
+      return "$(object)[" + length + "]:" + ref;
     }
   }
 
