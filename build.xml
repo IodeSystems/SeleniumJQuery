@@ -332,16 +332,16 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 						<include name="**/*.jar" />
 					</fileset>
 				</path>
-				<javac srcdir="${test.dir};" destdir="${test.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
+				<javac srcdir="${test.dir};" destdir="${build.dir}" target="1.6" source="1.6" debug="true" classpathref="build.classpath" includeantruntime="false" />
 				<echo message="Running tests..." />
 				<junit showoutput="true">
 					<classpath>
 						<path refid="build.classpath" />
-						<path location="${test.dir}" />
+						<path location="${build.dir}" />
 					</classpath>
 					<formatter type="plain" usefile="false" />
 					<batchtest>
-						<fileset dir="${test.dir}" includes="**/*.class" />
+						<fileset dir="${build.dir}" includes="**/*.class" />
 					</batchtest>
 				</junit>
 			</then>
