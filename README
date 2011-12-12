@@ -14,15 +14,8 @@ Install
 	$ git clone git@github.com:Nthalk/SeleniumJQuery.git # Checkout project
 	$ cd SeleniumJQuery                                  # Step into dir
 	$ ant test                                           # Build/test
-	$ cd dist                                            # Step into dist dir
-	$ java -jar SeleniumJQuery.jar                       # Run example
+	$ java -jar dist/SeleniumJQuery.jar                       # Run example
   	
-Note: if selenium could not find a suitable firefox profile, point it to one 
-with -Dwebdriver.firefox.bin. I installed firefox-5.0 in a special place and use
--Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox, so my cmd
-looks more like:
-	$ java -Dwebdriver.firefox.bin=/home/ctaylor/local/inst/firefox-5.0/firefox -jar SeleniumJQuery.jar 
-
 Using as a Library
 ==================
 After installing, you can reference it as an ivy library as it will be in your
@@ -42,3 +35,9 @@ Example
 ==================
 Please see: https://github.com/Nthalk/SeleniumJQuery/blob/master/example/com/anteambulo/SeleniumJQuery/example/Example.java
 for a sweet example!
+
+Development & Typical Usage
+==================
+Typically, you really need to see what is going on to develop a good scraper.
+My setup is usually with Firefox 5.0, and I inject firebug, and some firebug properties into my drivers while I develop them. Afterwards, I use HtmlUnitDriver for production (and I silence it's excessively verbose output).
+

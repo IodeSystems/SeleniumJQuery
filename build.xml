@@ -23,7 +23,7 @@ Installation:
 ====================
 To install this build system, simply download/copy the build.xml file into your project root and treat it as a regualar ant build file.
 
-	curl https://gist.github.com/gists/1401567/download > build.xml
+	curl https://raw.github.com/gist/1401567/build.xml > build.xml
 
 Usage:
 ====================
