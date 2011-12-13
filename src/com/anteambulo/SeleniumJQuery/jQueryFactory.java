@@ -1,43 +1,23 @@
 package com.anteambulo.SeleniumJQuery;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.NoSuchElementException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.io.IOUtils;
 
 public class jQueryFactory {
 
-  public static class Until {
-    private long timeout;
-
-    public Until(long until) {
-      timeout = System.currentTimeMillis() + until;
-    }
-
-    public boolean checkWait() {
-      if (check()) {
-        try {
-          Thread.sleep(200);
-          return true;
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-      return false;
-    }
-
-    public void checkWaitSafe() throws TimeoutException {
-      if (!checkWait()) {
-        throw new TimeoutException();
-      }
-    }
-
-    public boolean check() {
-      return System.currentTimeMillis() < timeout;
-    }
+  public static interface Condition {
+    public boolean check() throws Exception;
   }
 
+  private String ref = "SeleniumjQuery";
+  private String url = "jquery-1.7.1.js";
   private JavascriptExecutor js;
   private long defaultTimeout = 30000L;
   private final AtomicLong id_factory = new AtomicLong();
@@ -54,19 +34,23 @@ public class jQueryFactory {
     this.js = js;
   }
 
-  public Until until() {
-    return until(getDefaultTimeout());
-  }
-
-  public Until until(long timeout) {
-    return new Until(timeout);
-  }
-
   public jQueryFactory() {
   }
 
   public void setJs(JavascriptExecutor js) {
     this.js = js;
+  }
+
+  public long count(String query) {
+    return query(query).length();
+  }
+
+  public jQuery querySafe(String query) {
+    jQuery q = query(query);
+    if (q.length() == 0) {
+      throw new NoSuchElementException(query);
+    }
+    return q;
   }
 
   public jQuery queryUntilAtLeast(String query, int min) throws TimeoutException {
@@ -102,25 +86,20 @@ public class jQueryFactory {
   }
 
   public jQuery queryUntil(String query, int min, int max, long timeout) throws TimeoutException {
-    long to = System.currentTimeMillis() + timeout;
-    while (true) {
-      jQuery q = query(query);
-
-      if (q.length() >= min) {
-        if (max == -1 || q.length() <= max) {
-          return q;
+    final jQuery q = query(query);
+    q.setTimeout(timeout);
+    try {
+      while (true) {
+        if (q.length() >= min) {
+          if (max == -1 || q.length() <= max) {
+            return q;
+          }
         }
+        q.pause("Looking for " + query + " with " + min + " to " + max + " results.");
+        q.init();
       }
-
-      if (System.currentTimeMillis() > to) {
-        throw new TimeoutException("Looking for " + query + " with " + min + " to " + max + " results.");
-      }
-
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        throw new TimeoutException("Looking for " + query + " with " + min + " to " + max + " results.");
-      }
+    } finally {
+      q.clearTimeout();
     }
   }
 
@@ -139,39 +118,47 @@ public class jQueryFactory {
     try {
       return js.executeScript(script, args);
     } catch (Exception e) {
-      if (load()) {
-        return js(script, args);
+      try {
+        if (ensurejQuery()) {
+          return js(script, args);
+        }
+      } catch (IOException e1) {
+        throw new RuntimeException(e1);
       }
       throw new RuntimeException(e);
     }
   }
 
-  private boolean load() {
-    if ((Boolean) js.executeScript("return typeof jQuery != typeof __undefined")) {
+  public String getUrl() {
+    return url;
+  }
+
+  public jQueryFactory setUrl(String url) {
+    this.url = url;
+    return this;
+  }
+
+  public boolean ensurejQuery() throws IOException {
+    if ((Boolean) js.executeScript("return typeof window[arguments[0]] != typeof __undefined", getRef())) {
       return false;
     }
-
-    long to = System.currentTimeMillis() + 30000;
-    while ((Boolean) js.executeScript("return typeof jQuery == typeof __undefined")) {
-      js.executeScript("" +
-        "var src = document.createElement('script');" +
-        "src.src='http://code.jquery.com/jquery-1.7.min.js';" +
-        "src.type='application/javascript';" +
-        "document.body.appendChild(src);");
-
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-      if (to < System.currentTimeMillis()) {
-        throw new RuntimeException("Timeout loading jquery");
-      }
-    }
+    InputStream is = getClass().getClassLoader().getResourceAsStream(getUrl());
+    js.executeScript(IOUtils.readFully(is));
+    is.close();
+    js.executeScript("window[arguments[0]] = jQuery.noConflict(true)", getRef());
     return true;
   }
 
   public long createId() {
     return id_factory.incrementAndGet();
+  }
+
+  public jQueryFactory setRef(String ref) {
+    this.ref = ref;
+    return this;
+  }
+
+  public String getRef() {
+    return ref;
   }
 }

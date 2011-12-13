@@ -15,6 +15,8 @@ public class jQuery implements Iterable<WebElement> {
   private boolean closed = false;
   private final jQuery parent;
   private final List<jQuery> children = new ArrayList<jQuery>();
+  private long timeout = 0;
+  private long startTime = 0;
 
   public static abstract class Eacher {
     public abstract void invoke(Integer index, WebElement ele);
@@ -86,8 +88,150 @@ public class jQuery implements Iterable<WebElement> {
     return length;
   }
 
+  public Long until(int min, int max, long timeout) throws TimeoutException {
+    setTimeout(timeout);
+    while (true) {
+      Long len = init().length;
+      if (len >= min) {
+        if (max > 0 && len <= max) {
+          clearTimeout();
+          return len;
+        }
+      }
+
+      if (isTimeout()) {
+        clearTimeout();
+        throw new TimeoutException();
+      }
+
+      pause();
+    }
+  }
+
+  public jQuery clearTimeout() {
+    this.timeout = 0;
+    return this;
+  }
+
+  public jQuery setTimeout() {
+    return setTimeout(jqf.getDefaultTimeout());
+  }
+
+  public jQuery setTimeout(long timeout) {
+    this.timeout = timeout;
+    this.startTime = System.currentTimeMillis();
+    return this;
+  }
+
+  public boolean isTimeout() {
+    if (timeout == 0) {
+      throw new IllegalArgumentException("Cannot tell if timed out -- no timeout set");
+    }
+    return System.currentTimeMillis() > startTime + timeout;
+  }
+
+  public jQuery pause() throws TimeoutException {
+    return pause(toString());
+  }
+
+  public jQuery pause(String msg) throws TimeoutException {
+    try {
+      if (isTimeout()) {
+        long timeout_old = this.timeout;
+        clearTimeout();
+        throw new TimeoutException("Timeout " + toString() + " after " + timeout_old + " ms.");
+      }
+      Thread.sleep(200);
+    } catch (InterruptedException e) {
+      clearTimeout();
+      throw new TimeoutException();
+    }
+    return this;
+  }
+
+  public int untilCombinedAtterHashChanged(int previous_hash, String attr, long timeout) throws TimeoutException {
+    setTimeout(timeout);
+    while (true) {
+      int attr_hash = combinedAttrHash(attr);
+      if (attr_hash != previous_hash) {
+        return attr_hash;
+      }
+
+      if (isTimeout()) {
+        throw new TimeoutException();
+      }
+      pause();
+    }
+  }
+
+  public int untilCombinedAttrHashChanged(int previous_hash, String attr) throws TimeoutException {
+    return untilCombinedAtterHashChanged(previous_hash, attr, jqf.getDefaultTimeout());
+  }
+
+  public int untilCombinedMethodHashChanged(int previous_hash, String method) throws TimeoutException {
+    return untilCombinedMethodHashChanged(previous_hash, method, jqf.getDefaultTimeout());
+  }
+
+  public int untilCombinedMethodHashChanged(int previous_hash, String method, long timeout) throws TimeoutException {
+    long to = System.currentTimeMillis() + timeout;
+    while (true) {
+      int method_hash = combinedMethodHash(method);
+      if (method_hash != previous_hash) {
+        return method_hash;
+      }
+
+      if (to < System.currentTimeMillis()) {
+        throw new TimeoutException();
+      }
+
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        throw new TimeoutException();
+      }
+    }
+  }
+
+  public Long untilLessThan(int max, long timeout) throws TimeoutException {
+    return until(0, max, timeout);
+  }
+
+  public Long untilLessThan(int max) throws TimeoutException {
+    return until(0, max, jqf.getDefaultTimeout());
+  }
+
+  public Long untilNone(long timeout) throws TimeoutException {
+    return until(0, 0, timeout);
+  }
+
+  public Long untilNone() throws TimeoutException {
+    return until(0, 0, jqf.getDefaultTimeout());
+  }
+
+  public Long until(int min, long timeout) throws TimeoutException {
+    return until(min, -1, timeout);
+  }
+
+  public Long until(int min) throws TimeoutException {
+    return until(min, -1, jqf.getDefaultTimeout());
+  }
+
   public Long refreshSize() {
     return length = (Long) jsret(".length");
+  }
+
+  public int combinedAttrHash(String attr) {
+    return ((String) js("var v;" +
+      "var attr = arguments[0];" +
+      ref + ".each(function(){v+='|'+$(this).attr(attr);});" +
+      "return v", attr)).hashCode();
+  }
+
+  public int combinedMethodHash(String meth) {
+    return ((String) js("var v;" +
+      "var meth = arguments[0];" +
+      ref + ".each(function(){v+='|'+$(this)[meth]();});" +
+      "return v", meth)).hashCode();
   }
 
   private void check() {
@@ -101,7 +245,7 @@ public class jQuery implements Iterable<WebElement> {
       close();
     }
     closed = false;
-    jsref(" = jQuery(arguments[0]);", selector);
+    jsref(" = " + jqf.getRef() + "(arguments[0]);", selector);
     refresh();
     return this;
   }
@@ -111,7 +255,7 @@ public class jQuery implements Iterable<WebElement> {
       close();
     }
     closed = false;
-    jsref("= jQuery(arguments[0]);", we);
+    jsref("= " + jqf.getRef() + "(arguments[0]);", we);
     refresh();
     return this;
   }
@@ -1214,5 +1358,9 @@ public class jQuery implements Iterable<WebElement> {
         return i < length;
       }
     };
+  }
+
+  public jQuery clear() {
+    return val("");
   }
 }

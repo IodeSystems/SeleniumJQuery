@@ -9,15 +9,14 @@ public class jQueryBrowser extends jQueryFactory {
     this.drv = drv;
     setJs(drv);
   }
-  
+
   public RemoteWebDriver getDrv() {
     return drv;
   }
-  
-  
-  public jQueryBrowser get(String url){
+
+  public jQueryBrowser get(String url) {
     drv.get(url);
     return this;
   }
-  
+
 }
