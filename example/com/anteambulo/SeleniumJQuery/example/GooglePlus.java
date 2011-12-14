@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxBinary;
 import org.openqa.selenium.firefox.FirefoxDriver;
@@ -26,16 +27,26 @@ public class GooglePlus extends jQueryBrowser {
   public static void main(String[] args) throws TimeoutException, IOException {
     if (args.length != 3) {
       System.out.println("usage: java -classpath SeleniumJQuery.jar " + GooglePlus.class.getName() + " username password 'your message'");
+      System.out.println("You can specify a compatible firefox-bin with -Dwebdriver.firefox.bin=/path/to/firefox-bin");
+      System.out.println("You can specify loading firebug with -Dwebdriver.firefox.firebug=/path/to/firebug.xpi");
       return;
     }
-
-    FirefoxBinary bin = new FirefoxBinary(new File("/home/ctaylor/local/inst/firefox-5.0/firefox-bin"));
+    FirefoxBinary bin;
+    try {
+      bin = new FirefoxBinary();
+    } catch (WebDriverException e) {
+      System.err.println(e.getMessage());
+      System.err.println("Have you tryed specifying a compatible firefox-bin with -Dwebdriver.firefox.bin=/path/to/firefox-bin");
+      return;
+    }
     FirefoxProfile prof = new FirefoxProfile();
-    prof.addExtension(new File("/home/carl/local/inst/firebug-1.8.0.xpi"));
-    prof.setPreference("extensions.firebug.currentVersion", "1.8.0");
-    prof.setPreference("extensions.firebug.console.enableSites", true);
-    prof.setPreference("extensions.firebug.net.enableSites", true);
-    prof.setPreference("extensions.firebug.script.enableSites", true);
+    if (System.getProperty("webdriver.firefox.firebug") != null) {
+      prof.addExtension(new File(System.getProperty("webdriver.firefox.firebug")));
+      prof.setPreference("extensions.firebug.currentVersion", "1.8.0");
+      prof.setPreference("extensions.firebug.console.enableSites", true);
+      prof.setPreference("extensions.firebug.net.enableSites", true);
+      prof.setPreference("extensions.firebug.script.enableSites", true);
+    }
 
     RemoteWebDriver drv = new FirefoxDriver(bin, prof);
     try {
