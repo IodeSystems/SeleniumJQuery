@@ -31,7 +31,7 @@ public class jQuery implements Iterable<WebElement> {
   }
 
   public static String createRef(long ref) {
-    return "window.jquery_proxy_" + ref;
+    return "window.SeleniumjQuery_" + ref;
   }
 
   public String createRef() {
