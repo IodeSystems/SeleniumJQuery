@@ -38,6 +38,31 @@ public class jQuery implements Iterable<WebElement> {
     return createRef(jqf.createId());
   }
 
+  public Iterable<jQuery> each() {
+    return new Iterable<jQuery>() {
+      @Override
+      public Iterator<jQuery> iterator() {
+        return new Iterator<jQuery>() {
+          int i = 0;
+
+          @Override
+          public void remove() {
+          }
+
+          @Override
+          public jQuery next() {
+            return new jQuery(jqf, jqf.createId(), get(i++));
+          }
+
+          @Override
+          public boolean hasNext() {
+            return length > i;
+          }
+        };
+      }
+    };
+  }
+
   public jQuery(jQueryFactory jqf, String reference, jQuery parent) {
     this.jqf = jqf;
     this.ref = reference;
@@ -91,11 +116,11 @@ public class jQuery implements Iterable<WebElement> {
   public Long until(int min, int max, long timeout) throws TimeoutException {
     setTimeout(timeout);
     while (true) {
-      Long len = init().length;
-      if (len >= min) {
-        if (max > 0 && len <= max) {
+      init();
+      if (length >= min) {
+        if (max < 0 || length <= max) {
           clearTimeout();
-          return len;
+          return length;
         }
       }
 
@@ -134,17 +159,42 @@ public class jQuery implements Iterable<WebElement> {
     return pause(toString());
   }
 
+  private int html_hash = -1;
+
+  public jQuery mark() {
+    html_hash = combinedMethodHash("html");
+    return this;
+  }
+
+  public jQuery untilChanged(long timeout) throws TimeoutException {
+    if (html_hash == -1) {
+      throw new IllegalArgumentException("Cannot wait until changed if html has never been marked (mark())");
+    }
+    setTimeout(timeout);
+    try {
+      while (true) {
+        if (html_hash != combinedMethodHash("html")) {
+          return this;
+        }
+        init();
+        pause("Waiting for " + toString() + " to change.");
+      }
+    } finally {
+      html_hash = -1;
+    }
+  }
+
   public jQuery pause(String msg) throws TimeoutException {
     try {
       if (isTimeout()) {
         long timeout_old = this.timeout;
         clearTimeout();
-        throw new TimeoutException("Timeout " + toString() + " after " + timeout_old + " ms.");
+        throw new TimeoutException("Timeout " + toString() + " after " + timeout_old + " ms:" + msg);
       }
       Thread.sleep(200);
     } catch (InterruptedException e) {
       clearTimeout();
-      throw new TimeoutException();
+      throw new TimeoutException(msg);
     }
     return this;
   }
@@ -221,16 +271,16 @@ public class jQuery implements Iterable<WebElement> {
   }
 
   public int combinedAttrHash(String attr) {
-    return ((String) js("var v;" +
+    return ((String) js("var v = '';" +
       "var attr = arguments[0];" +
-      ref + ".each(function(){v+='|'+$(this).attr(attr);});" +
+      ref + ".each(function(){v+='|'+" + jqf.getRef() + "(this).attr(attr);});" +
       "return v", attr)).hashCode();
   }
 
   public int combinedMethodHash(String meth) {
-    return ((String) js("var v;" +
+    return ((String) js("var v = '';" +
       "var meth = arguments[0];" +
-      ref + ".each(function(){v+='|'+$(this)[meth]();});" +
+      ref + ".each(function(){v+='|'+" + jqf.getRef() + "(this)[meth]();});" +
       "return v", meth)).hashCode();
   }
 
@@ -616,7 +666,7 @@ public class jQuery implements Iterable<WebElement> {
   }
 
   public jQuery change() {
-    jsref(".mousechange();");
+    jsref(".change();");
     return this;
   }
 
@@ -1362,5 +1412,9 @@ public class jQuery implements Iterable<WebElement> {
 
   public jQuery clear() {
     return val("");
+  }
+
+  public jQuery untilChanged() throws TimeoutException {
+    return untilChanged(jqf.getDefaultTimeout());
   }
 }
