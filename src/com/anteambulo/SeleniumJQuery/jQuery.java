@@ -113,14 +113,14 @@ public class jQuery implements Iterable<WebElement> {
     return length;
   }
 
-  public Long until(int min, int max, long timeout) throws TimeoutException {
+  public jQuery until(int min, int max, long timeout) throws TimeoutException {
     setTimeout(timeout);
     while (true) {
       init();
       if (length >= min) {
         if (max < 0 || length <= max) {
           clearTimeout();
-          return length;
+          return this;
         }
       }
 
@@ -242,27 +242,27 @@ public class jQuery implements Iterable<WebElement> {
     }
   }
 
-  public Long untilLessThan(int max, long timeout) throws TimeoutException {
+  public jQuery untilLessThan(int max, long timeout) throws TimeoutException {
     return until(0, max, timeout);
   }
 
-  public Long untilLessThan(int max) throws TimeoutException {
+  public jQuery untilLessThan(int max) throws TimeoutException {
     return until(0, max, jqf.getDefaultTimeout());
   }
 
-  public Long untilNone(long timeout) throws TimeoutException {
+  public jQuery untilNone(long timeout) throws TimeoutException {
     return until(0, 0, timeout);
   }
 
-  public Long untilNone() throws TimeoutException {
+  public jQuery untilNone() throws TimeoutException {
     return until(0, 0, jqf.getDefaultTimeout());
   }
 
-  public Long until(int min, long timeout) throws TimeoutException {
+  public jQuery until(int min, long timeout) throws TimeoutException {
     return until(min, -1, timeout);
   }
 
-  public Long until(int min) throws TimeoutException {
+  public jQuery until(int min) throws TimeoutException {
     return until(min, -1, jqf.getDefaultTimeout());
   }
 
@@ -1372,7 +1372,6 @@ public class jQuery implements Iterable<WebElement> {
 
   public void close() {
     if (!closed) {
-      js("delete " + ref);
       closed = true;
       for (jQuery child : children) {
         child.close();
