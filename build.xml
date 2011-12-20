@@ -16,8 +16,12 @@ It is intended to be cross platform, but I only actively test linux.
 
 Requirements:
 ====================
-It requires ant (http://ant.apache.org/bindownload.cgi), and then it will download everything else.
-If you are deploying, you will need to have a ssh client with sshkeys, and rsync. Windows users should look into Cygwin (http://cygwin.com/install.html)
+To run the script, you only need ant (http://ant.apache.org/bindownload.cgi).
+
+If you want your project to be built/tested by this script, you need to provide a build.properties file and an ivy.xml file. These will define how your project should be packaged, where your source/res/test/dist/build directories are, and what dependencies should be pulled in with ivy. There are sensible defaults, and you can generate stubs by running 
+    ant init
+
+If you intend to deploy your project on a remote server, you will need to have a ssh client with sshkeys setup, and rsync. Windows users should look into Cygwin (http://cygwin.com/install.html) for providing these requirements.
 
 Installation:
 ====================
@@ -51,7 +55,7 @@ When creating a new project, you can run:
 This will create some empty folders and files along with messages about what they are used fore.
 
 Several empty files are created and need to be filled out before the build system can considered to be functional. 
-These files include the build.properties, ivysettings.xml, ivy.xml, and optionally local.build.properties.
+These files include the build.properties, ivy.xml, and optionally local.build.properties.
 Below is a collection of examples of these files' contents.
 
 Example of a basic build.properties file:
@@ -127,26 +131,6 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 
 	<!-- Plugins -->
 
-	<!-- BEGIN JUNIT plugin -->
-	<property name="junit.lib.dir" location="${user.home}/.ant/lib" />
-	<!-- JUNIT autoinstaller -->
-	<available property="junit-exists" file="${junit.lib.dir}/ant-junit-1.8.2.jar" />
-	<target name="junit-download" unless="junit-exists">
-		<mkdir dir="${junit.lib.dir}" />
-		<get src="http://repo1.maven.org/maven2/org/apache/ant/ant-junit/1.8.2/ant-junit-1.8.2.jar" dest="${junit.lib.dir}/ant-junit-1.8.2.jar" />
-		<get src="http://repo1.maven.org/maven2/junit/junit/4.10/junit-4.10.jar" dest="${junit.lib.dir}/junit-4.10.jar" />
-		<get src="http://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.1/hamcrest-core-1.1.jar" dest="${junit.lib.dir}/hamcrest-core-1.1.jar" />
-	</target>
-	<target name="junit-init" depends="junit-download">
-		<taskdef name="junit" classname="org.apache.tools.ant.taskdefs.optional.junit.JUnitTask">
-			<classpath>
-				<pathelement location="${junit.lib.dir}/junit-4.10.jar" />
-				<pathelement location="${junit.lib.dir}/ant-junit-1.8.2.jar" />
-			</classpath>
-		</taskdef>
-	</target>
-	<!-- END JUNIT plugin -->
-
 	<!-- BEGIN IVY plugin -->
 	<property name="ivy.dep.file" value="ivy.xml" />
 	<property name="ivy.lib.dir" value="${lib.dir}" />
@@ -174,7 +158,7 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 		</path>
 		<taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path" />
 	</target>
-	<target name="ivy-resolve" depends="ivy-init,contrib-init">
+	<target name="ivy-resolve" depends="ivy-init,ant-contrib-init">
 		<if>
 			<available file="${ivy.settings.file}" />
 			<then>
@@ -192,26 +176,23 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 	</target>
 	<!-- END IVY plugin -->
 
-	<!-- BEGIN ANT-CONTRIB plugin -->
-	<property name="ant-contrib.lib.dir" location="${user.home}/.ant/lib" />
-	<!-- ANT-CONTRIB autoinstaller -->
-	<available property="ant-contrib-exists" file="${ant-contrib.lib.dir}/ant-contrib-1.0b3.jar" />
-	<target name="contrib-download" unless="ant-contrib-exists">
-		<mkdir dir="${ant-contrib.lib.dir}" />
-		<get src="http://downloads.sourceforge.net/project/ant-contrib/ant-contrib/1.0b3/ant-contrib-1.0b3-bin.zip?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fant-contrib%2Ffiles%2Fant-contrib%2F1.0b3%2F&amp;use_mirror=cdnetworks-us-1" dest="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" username="true" />
-		<unzip src="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" dest="${ant-contrib.lib.dir}" overwrite="no" />
-		<move todir="${ant-contrib.lib.dir}">
-			<fileset file="${ant-contrib.lib.dir}/ant-contrib/*.jar" />
-			<fileset file="${ant-contrib.lib.dir}/ant-contrib/lib/*.jar" />
-		</move>
-		<delete file="${ant-contrib.lib.dir}/ant-contrib-1.0b3-bin.zip" />
-		<delete dir="${ant-contrib.lib.dir}/ant-contrib" />
+
+	<!-- BEGIN JUNIT plugin -->
+	<property name="junit.install.version" value="4.10" />
+	<target name="junit-init" depends="ivy-init">
+		<ivy:cachepath organisation="junit" module="junit" revision="${junit.install.version}" pathid="junit.lib.path" inline="true" log="quiet" />
+		<taskdef name="junit" classname="org.apache.tools.ant.taskdefs.optional.junit.JUnitTask">
+			<classpath path="junit.lib.path" />
+		</taskdef>
 	</target>
-	<target name="contrib-init" depends="contrib-download">
+	<!-- END JUNIT plugin -->
+
+	<!-- BEGIN ANT-CONTRIB plugin -->
+	<property name="ant-contrib.install.version" value="1.0b3" />
+	<target name="ant-contrib-init" depends="ivy-init">
+		<ivy:cachepath organisation="ant-contrib" module="ant-contrib" revision="${ant-contrib.install.version}" pathid="ant-contrib.lib.path" inline="true" log="quiet" />
 		<taskdef resource="net/sf/antcontrib/antcontrib.properties">
-			<classpath>
-				<pathelement location="${ant-contrib.lib.dir}/ant-contrib-1.0b3.jar" />
-			</classpath>
+			<classpath path="junit.lib.path" />
 		</taskdef>
 	</target>
 	<!-- END ANT-CONTRIB plugin -->
@@ -234,14 +215,12 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 		<mkdir dir="${src.dir}" />
 		<echo message="Creating res directory -- this is where any non-java resources that will be present in the distribution jar will go." />
 		<mkdir dir="${res.dir}" />
-		<echo message="Creating test directory -- this is where your junit test cases should go." />
+		<echo message="Creating test directory -- this is where your junit tests should go." />
 		<mkdir dir="${test.dir}" />
 		<echo message="Creating build.properties file -- this is where you should define your module's version, company name, and jar properties." />
 		<touch file="${build.properties.file}" />
 		<echo message="Creating local.build.properties file -- this is where you should define your envirnoment's build properties, like your deployment command, user, host, and dir." />
 		<touch file="${local.build.properties.file}" />
-		<echo message="Creating ivysettings.xml file -- This is where you define your resolvers for dependency retrieval." />
-		<touch file="${ivy.settings.file}" />
 		<echo message="Creating build directory -- this is where class files are compiled into." />
 		<mkdir dir="${build.dir}" />
 		<echo message="Creating dist directory -- this is where the project, ivy descriptor, and dependencies are copied into for distribution." />
@@ -253,7 +232,7 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 	</target>
 
 	<!-- Provieds a project the option to define precompilation tasks -->
-	<target name="precompile" depends="clean, ivy-resolve, contrib-init">
+	<target name="precompile" depends="clean, ivy-resolve, ant-contrib-init">
 		<if>
 			<available file="precompile.xml" />
 			<then>
@@ -342,7 +321,7 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
 	</target>
 
 	<!-- Testing -->
-	<target name="test" depends="jar,junit-init,contrib-init">
+	<target name="test" depends="jar,junit-init,ant-contrib-init">
 		<if>
 			<available file="${test.dir}" property="tests-exist" />
 			<then>
