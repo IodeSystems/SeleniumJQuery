@@ -6,3 +6,6 @@ build
 .classpath
 .settings
 
+/nbproject/private/
+/nbbuild/
+/nbdist/

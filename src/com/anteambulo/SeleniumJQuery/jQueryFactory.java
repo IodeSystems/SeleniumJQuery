@@ -12,10 +12,6 @@ import org.openqa.selenium.io.IOUtils;
 
 public class jQueryFactory {
 
-  public static interface Condition {
-    public boolean check() throws Exception;
-  }
-
   private String ref = "SeleniumjQuery";
   private String url = "jquery-1.7.1.js";
   private JavascriptExecutor js;

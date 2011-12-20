@@ -15,14 +15,14 @@ public class jQueryTest {
   @Before
   public void init() {
     // HtmlUnitDriver is a yenta -- QUIET YENTA, QUIET!
-    System.setProperty("org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog");
-    System.setProperty("org.apache.commons.logging.simplelog.log.com.gargoylesoftware.htmlunit","fatal");
-    
+    System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.SimpleLog");
+    System.setProperty("org.apache.commons.logging.simplelog.log.com.gargoylesoftware.htmlunit", "fatal");
+
     HtmlUnitDriver drv = new HtmlUnitDriver();
     drv.setJavascriptEnabled(true);
     drv.get("http://jquery.com/");
     jq = new jQueryFactory(drv);
-    
+
   }
 
   @Test
@@ -56,4 +56,36 @@ public class jQueryTest {
     assertEquals("<A href=\"http://forum.jquery.com/\" title=\"jQuery Forum\">Forum</A>", forum.html().trim());
   }
 
+  @Test
+  public void allMethods() {
+    // Combining jquery objects
+    assertEquals(jq.query("body").add(jq.query("html")).length().longValue(), 2L);
+    assertEquals(jq.query("body").add("html").length().longValue(), 2L);
+    assertEquals(jq.query("body").add("html").add("<div>").length().longValue(), 3L);
+
+    // Add/Remove/Toggling of classes
+    jQuery class_management = jq.query("body").addClass("test-class");
+    assertEquals(true, class_management.is(".test-class"));
+    class_management.removeClass("test-class");
+    assertEquals(false, class_management.is(".test-class"));
+    class_management.toggleClass("test-class");
+    assertEquals(true, class_management.is(".test-class"));
+    class_management.toggleClass("test-class");
+    assertEquals(false, class_management.is(".test-class"));
+
+    // Appending content
+    jq.query("body").append("<div id='after'>after</div>");
+    assertEquals(true, jq.query("body").text().endsWith("after"));
+    jq.query("#after").wrap("<span/>");
+    // NOTE: HtmlUnit is stupid and makes everything uppercase!
+    assertEquals(true, jq.query("body").html().toLowerCase().endsWith("</span>"));
+    jq.query("#after").unwrap("<span/>");
+    // NOTE: HtmlUnit is stupid and makes everything uppercase!
+    assertEquals(true, jq.query("body").html().toLowerCase().endsWith("</div>"));
+
+    // Removal of element
+    jq.query("#after").remove();
+    assertEquals(0L, jq.query("#after").length().longValue());
+
+  }
 }
