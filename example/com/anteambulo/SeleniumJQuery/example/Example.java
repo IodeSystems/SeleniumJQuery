@@ -24,7 +24,7 @@ public class Example extends jQueryFactory {
       String results = jq.queryUntil("#resultStats:contains(results)").text();
       System.out.println(results.split(" ")[1] + " results found!");
     } finally {
-      drv.close();
+      drv.quit();
     }
   }
 }
