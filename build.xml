@@ -171,10 +171,9 @@ deploy.cmd=sh -c 'cd /opt/MyProject;export DISPLAY=:0 && nohup java -jar MyProje
   </target>
   
   <target name="ivy-install" depends="jar">
-    <delete dir="${repo.dir}/${org}/${module}/${version}/" failonerror="false" quiet="true"/>
-    <mkdir dir="${repo.dir}/${org}/${module}/${version}/" />
-    <copy file="${dist.dir}/ivy.xml" todir="${repo.dir}/${org}/${module}/${version}/" />
-    <copy file="${dist.dir}/${module}.jar" tofile="${repo.dir}/${org}/${module}/${version}/${module}-${version}.jar" />
+    <mkdir dir="${repo.dir}/${org}/${module}/jars" />
+    <copy file="${dist.dir}/ivy.xml" tofile="${repo.dir}/${org}/${module}/ivy-${version}.xml" />
+    <copy file="${dist.dir}/${module}.jar" tofile="${repo.dir}/${org}/${module}/jars/${module}-${version}.jar" />
   </target>
   <!-- END IVY plugin -->
 
