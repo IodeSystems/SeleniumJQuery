@@ -14,8 +14,9 @@ Install
 	$ git clone git@github.com:Nthalk/SeleniumJQuery.git # Checkout project
 	$ cd SeleniumJQuery                                  # Step into dir
 	$ ant test                                           # Build/test
-	$ java -jar dist/SeleniumJQuery.jar                       # Run example
-  	
+	                                                     # Run example
+	$ java -Dwebdriver.firefox.bin=/path/to/compatible/firefox-bin -jar dist/SeleniumJQuery.jar
+	
 Using as a Library
 ==================
 After installing, you can reference it as an ivy library as it will be in your
