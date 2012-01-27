@@ -28,7 +28,7 @@ After installing, you can reference it as an ivy library as it will be in your
 ivy cache. It does not currently have a home on any maven/ivy repos.
 
 For the current revision, your ivy.xml should have a dependency of:
-	<dependency org="com.anteambulo" name="SeleniumJQuery" rev="0.1"/>
+	&gt;dependency org="com.anteambulo" name="SeleniumJQuery" rev="2.16.1"/&lt;
 	
 Or you could just build it and drop the dist dependency jars and the 
 SeleniumJQuery jar in your classpath.
