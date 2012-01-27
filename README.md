@@ -1,13 +1,18 @@
-About
+What
 ==================
-Selenium is decent, but it's not great. It's a pain to deal with, and doesn't 
-treat it's users like programmers. It just operates on a level that simply 
-emulates real browsers. Which is nice.
+This binds jQuery with Selenium to give you access to a large, useful portion of the jQuery API while coding in Java.
 
-Sometimes -- Usually, you want more. Most developers who have used jQuery know
-how awesome it is at dealing with managing, examining, and manipulating dom 
-structures, yet -- It's not always available, and no good api exists for using
-it reliably within Selenium -- Until now. 
+Why
+==================
+Because the Selenium js/dom API sucks. No access to invisible items, no pulling data/text from arbitrary places, and a crappy selector engine.
+
+How
+==================
+SeleniumJQuery packages it's own version of jQuery and injects them into the page. During usage, it tracks the jQuery objects in a page cache with a generated id (incrementing long).
+
+When the page is reloaded, those query objects are lost, but can generally be rebuilt with the initial query and subsequent modifications.
+
+When the object is GC'd, then it's reference in the page just hangs out -- But I figure that pages will be closed/reloaded often so this should not be an issue.
 
 Install
 ==================
@@ -41,4 +46,3 @@ Development & Typical Usage
 ==================
 Typically, you really need to see what is going on to develop a good scraper.
 My setup is usually with Firefox 5.0, and I inject firebug, and some firebug properties into my drivers while I develop them. Afterwards, I use HtmlUnitDriver for production (and I silence it's excessively verbose output).
-
