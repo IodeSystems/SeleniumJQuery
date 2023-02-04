@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+source "$(dirname "$0")"/_init.sh
+
+TARGET="${1-emptystring}"
+
+run_setup() {
+  # Ensure ./bin is on the $PATH
+  if ! echo "$PATH" | grep -q '[:^]\./bin[:$]'; then
+    echo "./bin should be on your path. If using bash, add it with 'export PATH=\$PATH:./bin' in your ~.bash_profile"
+    exit 1
+  fi
+
+  unameOut="$(uname -s)"
+  case "${unameOut}" in
+  Linux*) setup_linux ;;
+  Darwin*) setup_mac ;;
+  *) echo "Unsupported system: ${unameOut}" && exit 1 ;;
+  esac
+
+  echo "All good, if you are still missing something, please add the installation hints to the setup command"
+}
+
+setup_linux() {
+  if ! command -v gpg &>/dev/null; then
+    echo Installing GPG
+    sudo apt install gpg -y
+  fi
+}
+
+setup_mac() {
+  if ! hash brew &>/dev/null; then
+    echo "Please install homebrew from brew.io"
+    exit 1
+  fi
+
+  if brew config | grep -q 'CLT: N/A'; then
+    xcode-select --install
+  fi
+
+  if ! command -v gpg &>/dev/null; then
+      echo Installing GPG
+      brew install gpg -y
+    fi
+}
+
+updates() {
+  mvn versions:display-dependency-updates -Dverbose=false | grep -B1 '\->' || true
+  mvn versions:display-plugin-updates -Dverbose=false | grep '\->' || true
+  cat blocked_updates.md
+}
+
+case $TARGET in
+setup)
+  run_setup
+  ;;
+updates)
+  updates
+  ;;
+rebuild)
+  mvn clean install -N
+  ;;
+clean)
+  # Clean compilation
+  mvn -q -e clean
+  rm -rf dataset/gen
+  # Delete kotlin caches
+  find ./ -type d -name '.kotlin-cache' -exec rm -rf {} \;
+  ;;
+release)
+  export GPG_TTY=$(tty)
+  mvn -Prelease clean release:prepare release:perform -e
+  echo "If everything looks okay, then feel free to run:"
+  echo "git push origin"
+  ;;
+*)
+  echo "The 'dev' script is for tools that fit in the development workflow
+
+Supported commands:
+  setup       ensures your system is setup
+  updates     checks for project updates
+  rebuild     resets the database, migrates, and regerenates everything
+  clean       cleans out cached files not cleaned by 'mvn clean'
+  release     builds a release version and publishes it
+"
+  exit 1
+  ;;
+esac

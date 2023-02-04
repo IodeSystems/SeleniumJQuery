@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+source "$(dirname "$0")"/_init.sh
+
+TARGET="${1-emptystring}"
+
+function build_ui() {
+  cd web || exit
+  TARGET_DIR=target/classes/public
+  # Clean
+  rm -rf "$TARGET_DIR"
+  # Vite builds the web folder
+  vite build
+  # Use gzip and brotli compression
+  find $TARGET_DIR -type f -exec brotli --keep {} -v \;
+  find $TARGET_DIR -type f -not -name "*.br" -exec gzip --keep {} -v \;
+  # Output bundle stats page
+  echo "View bundle stats: file://$(pwd)/stats.html"
+  cd ..
+}
+
+case $TARGET in
+all)
+  mvn clean install \
+    --no-transfer-progress
+  ;;
+db)
+  mvn -pl db \
+    clean install \
+    --no-transfer-progress
+  ;;
+ui)
+  build_ui
+  ;;
+ui-test)
+  mvn -pl ui-test \
+    clean install \
+    --no-transfer-progress
+  ;;
+web)
+  mvn -pl web \
+    clean install \
+    --no-transfer-progress
+  ;;
+*)
+  echo "The 'build' script is for creating packages and installing.
+It is generally expensive and cleans projects before compiling.
+
+  Supported commands:
+    all       packages and installs everything
+    db        package and install the db project
+    web       package and install the web project
+    ui        builds the release version of the ui (this is done during web, as well)
+    ui-test   packages and installs the ui-test tool
+"
+  exit 1
+  ;;
+esac
