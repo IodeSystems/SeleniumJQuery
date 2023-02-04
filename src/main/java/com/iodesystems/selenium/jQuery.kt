@@ -36,7 +36,7 @@ data class jQuery(
         fun elementsUnChecked(): List<RemoteWebElement>
         fun elements(): List<RemoteWebElement>
         fun renderScript(): String
-        fun children(childSelector: String): IEl
+        fun children(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
         fun child(childSelector: String): IEl
         fun <T> child(childSelector: String, fn: IEl.() -> T): T
         fun parent(parentSelector: String): IEl
@@ -169,11 +169,11 @@ data class jQuery(
             """.trimIndent()
         }
 
-        override fun children(childSelector: String): IEl {
+        override fun children(childSelector: String, atLeast: Int?, atMost: Int?): IEl {
             return copy(
                 selector = selector.map { "$it $childSelector".trim() },
-                atLeast = 1,
-                atMost = null,
+                atLeast = atLeast,
+                atMost = atMost,
             )
         }
 
@@ -297,7 +297,7 @@ data class jQuery(
         return fn(find("", null))
     }
 
-    private fun find(
+    fun find(
         selector: String,
         atLeast: Int? = 1,
         atMost: Int? = null,
