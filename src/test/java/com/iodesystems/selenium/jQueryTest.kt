@@ -23,8 +23,7 @@ class jQueryTest {
     @Test
     fun testGoogleSearch() {
         subject { jq ->
-            jq.driver.get("http://google.com")
-            jq.page {
+            jq.page("http://google.com") {
                 child("input[name='q']").sendKeys("hello world", 30)
                 child("input[value='Google Search']").first().click()
                 child("#result-stats").exists()

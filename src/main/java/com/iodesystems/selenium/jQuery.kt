@@ -292,7 +292,12 @@ data class jQuery(
         return fn(find("", null))
     }
 
-    fun find(
+    fun <T> page(url: String, fn: El.() -> T): T {
+        driver.get(url)
+        return fn(find("", null))
+    }
+
+    private fun find(
         selector: String,
         atLeast: Int? = 1,
         atMost: Int? = null,
