@@ -62,7 +62,6 @@ rebuild)
 clean)
   # Clean compilation
   mvn -q -e clean
-  rm -rf dataset/gen
   # Delete kotlin caches
   find ./ -type d -name '.kotlin-cache' -exec rm -rf {} \;
   ;;

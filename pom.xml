@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
 
@@ -7,11 +8,12 @@
     <artifactId>selenium-jquery</artifactId>
     <version>2.0.1-SNAPSHOT</version>
 
-    <name>Dataset</name>
+    <name>SeleniumJQuery</name>
     <description>
-        Dataset is a tool for wrapping Jooq queries in fluent builders
+        SeleniumJQuery is a tool for writing more effective Selenium tests with the power of jQuery selectors and
+        Kotlin's expressiveness
     </description>
-    <url>http://nthalk.github.io/dataset/</url>
+    <url>http://nthalk.github.io/SeleniumJQuery/</url>
     <developers>
         <developer>
             <id>nthalk</id>
@@ -35,9 +37,9 @@
     </properties>
 
     <scm>
-        <connection>scm:git:git@github.com:Nthalk/dataset.git</connection>
-        <developerConnection>scm:git:git@github.com:Nthalk/dataset.git</developerConnection>
-        <url>http://nthalk.github.io/dataset/</url>
+        <connection>scm:git:git@github.com:Nthalk/SeleniumJQuery.git</connection>
+        <developerConnection>scm:git:git@github.com:Nthalk/SeleniumJQuery.git</developerConnection>
+        <url>http://nthalk.github.io/SeleniumJQuery/</url>
         <tag>selenium-jquery-2.0.0</tag>
     </scm>
 
