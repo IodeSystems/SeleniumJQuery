@@ -28,8 +28,9 @@ data class jQuery(
         fun click(force: Boolean = false): IEl
         fun clear(force: Boolean = false): IEl
         fun text(): String
-        fun sendKeys(text: String, rateMillis: Int? = null): IEl
+        fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
         fun contains(text: String): IEl
+        fun value(): String
         fun gone()
         fun exists()
         fun element(): RemoteWebElement
@@ -49,6 +50,8 @@ data class jQuery(
         fun last(): IEl
         fun reroot(selector: String): IEl
         fun <T> withFrame(selector: String, fn: IEl.() -> T): T
+        fun waitUntil(message: String? = null, fn: IEl.() -> Boolean): IEl
+        fun <T> waitFor(message: String? = null, fn: IEl.() -> T?): T
     }
 
     data class El(
@@ -73,8 +76,11 @@ data class jQuery(
         override fun clear(force: Boolean): IEl {
             val el = element()
             el.clear()
-            if (force && el.getAttribute("value").isNotEmpty()) {
-                el.sendKeys(Keys.chord(Keys.CONTROL, Keys.BACK_SPACE))
+            if (force) {
+                el.sendKeys((0..(el.getAttribute("value").length))
+                    .joinToString("") {
+                        Keys.BACK_SPACE
+                    })
             }
             return this
         }
@@ -83,7 +89,7 @@ data class jQuery(
             return element().text
         }
 
-        override fun sendKeys(text: String, rateMillis: Int?): IEl {
+        override fun sendKeys(text: CharSequence, rateMillis: Int?): IEl {
             if (rateMillis == null) {
                 element().sendKeys(text)
             } else {
@@ -97,7 +103,7 @@ data class jQuery(
                         throw RetryException("Elements for $selector not 1, but ${elements.size}")
                     }
                     val actions = Actions(jq.driver as WebDriver).click(elements[0])
-                    val actionWithKeys = text.toCharArray().fold(actions) { a, c ->
+                    val actionWithKeys = text.fold(actions) { a, c ->
                         a.pause(Duration.ofMillis(rateMillis.toLong())).sendKeys(c.toString())
                     }
                     try {
@@ -113,6 +119,10 @@ data class jQuery(
         override fun contains(text: String): IEl {
             val textEncoded = jq.escape(text)
             return copy(selector = selector.map { "$it:contains($textEncoded)" })
+        }
+
+        override fun value(): String {
+            return element().getAttribute("value")
         }
 
         override fun gone() {
@@ -143,8 +153,7 @@ data class jQuery(
             if (jq.logQueriesToStdout) {
                 println(script)
             }
-            @Suppress("UNCHECKED_CAST")
-            return jq.driver.executeScript(execute) as List<RemoteWebElement>
+            @Suppress("UNCHECKED_CAST") return jq.driver.executeScript(execute) as List<RemoteWebElement>
         }
 
         override fun elements(): List<RemoteWebElement> {
@@ -236,6 +245,24 @@ data class jQuery(
             return result
         }
 
+        override fun waitUntil(message: String?, fn: IEl.() -> Boolean): IEl {
+            val message = message ?: "provided condition was not true"
+            jq.waitFor(message) {
+                if (!fn(this)) {
+                    throw RetryException("Timeout while $message")
+                }
+            }
+            return this
+        }
+
+        override fun <T> waitFor(message: String?, fn: IEl.() -> T?): T {
+            val message = message ?: "no value returned"
+            return jq.waitFor(message) {
+                fn(this) ?: throw RetryException("Timeout while $message")
+            }
+        }
+
+
         override fun child(
             left: String, right: String
         ): Either<IEl, IEl> {
@@ -266,21 +293,14 @@ data class jQuery(
     }
 
     fun escape(string: String): String {
-        return '"' + string.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r") + '"'
+        return '"' + string.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + '"'
     }
 
     fun <T> waitFor(
         failureMessage: String, retry: Duration? = null, timeOut: Duration? = null, t: () -> T
     ): T {
-        return FluentWait(driver)
-            .withTimeout(timeOut ?: timeout)
-            .pollingEvery(retry ?: Duration.ofMillis(100))
-            .withMessage(failureMessage)
-            .ignoring(RetryException::class.java)
-            .until {
+        return FluentWait(driver).withTimeout(timeOut ?: timeout).pollingEvery(retry ?: Duration.ofMillis(100))
+            .withMessage(failureMessage).ignoring(RetryException::class.java).until {
                 try {
                     t()
                 } catch (e: JavascriptException) {
