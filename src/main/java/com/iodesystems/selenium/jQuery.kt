@@ -2,6 +2,7 @@ package com.iodesystems.selenium
 
 import org.openqa.selenium.ElementClickInterceptedException
 import org.openqa.selenium.JavascriptException
+import org.openqa.selenium.Keys
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.internal.Either
@@ -24,10 +25,9 @@ data class jQuery(
     ) : Exception(message, cause)
 
     interface IEl {
-        fun click(): IEl
-        fun clear(): IEl
+        fun click(force: Boolean = false): IEl
+        fun clear(force: Boolean = false): IEl
         fun text(): String
-        fun clickForce(): IEl
         fun sendKeys(text: String, rateMillis: Int? = null): IEl
         fun contains(text: String): IEl
         fun gone()
@@ -58,27 +58,29 @@ data class jQuery(
         val atMost: Int? = null,
     ) : IEl {
 
-        override fun click(): IEl {
+        override fun click(force: Boolean): IEl {
             try {
                 element().click()
             } catch (e: ElementClickInterceptedException) {
-                clickForce()
+                if (force) {
+                    jq.driver.executeScript("arguments[0].click()", element())
+                } else throw e
+
             }
             return this
         }
 
-        override fun clear(): IEl {
-            element().clear()
+        override fun clear(force: Boolean): IEl {
+            val el = element()
+            el.clear()
+            if (force && el.getAttribute("value").isNotEmpty()) {
+                el.sendKeys(Keys.chord(Keys.CONTROL, Keys.BACK_SPACE))
+            }
             return this
         }
 
         override fun text(): String {
             return element().text
-        }
-
-        override fun clickForce(): IEl {
-            jq.driver.executeScript("arguments[0].click()", element())
-            return this
         }
 
         override fun sendKeys(text: String, rateMillis: Int?): IEl {
