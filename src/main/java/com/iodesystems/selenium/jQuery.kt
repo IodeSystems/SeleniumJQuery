@@ -33,17 +33,18 @@ data class jQuery(
         fun value(): String
         fun gone()
         fun exists()
+        fun maybeExists(): Boolean
         fun element(): RemoteWebElement
         fun elementsUnChecked(): List<RemoteWebElement>
         fun elements(): List<RemoteWebElement>
         fun renderScript(): String
-        fun children(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
-        fun child(childSelector: String): IEl
-        fun <T> child(childSelector: String, fn: IEl.() -> T): T
+        fun findAll(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
+        fun find(childSelector: String): IEl
+        fun <T> find(childSelector: String, fn: IEl.() -> T): T
         fun parent(parentSelector: String): IEl
         fun <T> parent(parentSelector: String, fn: IEl.() -> T): T
         fun parents(parentSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
-        fun child(left: String, right: String): Either<IEl, IEl>
+        fun either(left: String, right: String): Either<IEl, IEl>
         fun enabled(): IEl
         fun first(): IEl
         fun selectValue(value: String): IEl
@@ -133,6 +134,10 @@ data class jQuery(
             copy(atMost = null, atLeast = 1).elements()
         }
 
+        override fun maybeExists(): Boolean {
+            return copy(atMost = null, atLeast = null).elements().isNotEmpty()
+        }
+
         override fun element(): RemoteWebElement {
             return elements()[0]
         }
@@ -180,7 +185,7 @@ data class jQuery(
             """.trimIndent()
         }
 
-        override fun children(childSelector: String, atLeast: Int?, atMost: Int?): IEl {
+        override fun findAll(childSelector: String, atLeast: Int?, atMost: Int?): IEl {
             return copy(
                 selector = selector.map { "$it $childSelector".trim() },
                 atLeast = atLeast,
@@ -188,14 +193,14 @@ data class jQuery(
             )
         }
 
-        override fun child(childSelector: String): IEl {
+        override fun find(childSelector: String): IEl {
             return copy(
                 selector = selector.map { "$it $childSelector".trim() }, atLeast = 1, atMost = 1
             )
         }
 
-        override fun <T> child(childSelector: String, fn: IEl.() -> T): T {
-            return fn(child(childSelector))
+        override fun <T> find(childSelector: String, fn: IEl.() -> T): T {
+            return fn(find(childSelector))
         }
 
         override fun parent(parentSelector: String): IEl {
@@ -237,7 +242,7 @@ data class jQuery(
 
         override fun <T> withFrame(selector: String, fn: IEl.() -> T): T {
             val dr = (jq.driver as WebDriver)
-            val frame = child(selector).element()
+            val frame = find(selector).element()
             dr.switchTo().frame(frame)
             jq.install()
             val result = fn(copy(selector = listOf("")))
@@ -263,12 +268,12 @@ data class jQuery(
         }
 
 
-        override fun child(
+        override fun either(
             left: String, right: String
         ): Either<IEl, IEl> {
             return jq.waitFor("Either left or right not found, or both found") {
-                val leftEl = child(left)
-                val rightEl = child(right)
+                val leftEl = find(left)
+                val rightEl = find(right)
                 val leftElements = leftEl.elementsUnChecked()
                 val rightElements = rightEl.elementsUnChecked()
                 if (leftElements.size == 1) {
@@ -316,7 +321,7 @@ data class jQuery(
 
     fun <T> page(url: String, fn: El.() -> T): T {
         driver.get(url)
-        return fn(find("", null))
+        return page(fn)
     }
 
     fun find(

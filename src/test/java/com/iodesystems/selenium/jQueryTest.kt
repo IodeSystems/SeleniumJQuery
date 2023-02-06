@@ -24,9 +24,9 @@ class jQueryTest {
     fun testGoogleSearch() {
         subject { jq ->
             jq.page("http://google.com") {
-                child("input[name='q']").sendKeys("hello world", 30)
-                child("input[value='Google Search']").first().click()
-                child("#result-stats").exists()
+                find("input[name='q']").sendKeys("hello world", 30)
+                find("input[value='Google Search']").first().click()
+                find("#result-stats").exists()
             }
         }
     }
