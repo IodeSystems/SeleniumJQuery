@@ -1,11 +1,7 @@
 package com.iodesystems.selenium
 
-import org.openqa.selenium.ElementClickInterceptedException
-import org.openqa.selenium.JavascriptException
-import org.openqa.selenium.Keys
-import org.openqa.selenium.WebDriver
+import org.openqa.selenium.*
 import org.openqa.selenium.interactions.Actions
-import org.openqa.selenium.internal.Either
 import org.openqa.selenium.remote.RemoteWebDriver
 import org.openqa.selenium.remote.RemoteWebElement
 import org.openqa.selenium.support.ui.FluentWait
@@ -24,6 +20,20 @@ data class jQuery(
         message: String, cause: Throwable? = null
     ) : Exception(message, cause)
 
+    data class Either(
+        private val el: IEl, private val left: Boolean
+    ) : IEl by el {
+        fun <T> left(fn: IEl.() -> T): T? {
+            return if (left) null
+            else fn(el)
+        }
+
+        fun <T> right(fn: IEl.() -> T): T? {
+            return if (!left) null
+            else fn(el)
+        }
+    }
+
     interface IEl {
         fun click(force: Boolean = false): IEl
         fun clear(force: Boolean = false): IEl
@@ -34,6 +44,7 @@ data class jQuery(
         fun gone()
         fun exists()
         fun maybeExists(): Boolean
+        fun <T> ifExists(fn: IEl.() -> T): T?
         fun element(): RemoteWebElement
         fun elementsUnChecked(): List<RemoteWebElement>
         fun elements(): List<RemoteWebElement>
@@ -44,7 +55,8 @@ data class jQuery(
         fun parent(parentSelector: String): IEl
         fun <T> parent(parentSelector: String, fn: IEl.() -> T): T
         fun parents(parentSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
-        fun either(left: String, right: String): Either<IEl, IEl>
+        fun either(left: String, right: String): Either
+        fun either(left: IEl, right: IEl): Either
         fun enabled(): IEl
         fun first(): IEl
         fun selectValue(value: String): IEl
@@ -64,7 +76,13 @@ data class jQuery(
 
         override fun click(force: Boolean): IEl {
             try {
-                element().click()
+                jq.waitFor("could not refresh element") {
+                    try {
+                        element().click()
+                    } catch (e: StaleElementReferenceException) {
+                        throw RetryException("stale element reference", e)
+                    }
+                }
             } catch (e: ElementClickInterceptedException) {
                 if (force) {
                     jq.driver.executeScript("arguments[0].click()", element())
@@ -75,13 +93,18 @@ data class jQuery(
         }
 
         override fun clear(force: Boolean): IEl {
-            val el = element()
-            el.clear()
-            if (force) {
-                el.sendKeys((0..(el.getAttribute("value").length))
-                    .joinToString("") {
-                        Keys.BACK_SPACE
-                    })
+            jq.waitFor("could not refresh element") {
+                try {
+                    val el = element()
+                    el.clear()
+                    if (force) {
+                        el.sendKeys((0..(el.getAttribute("value").length)).joinToString("") {
+                            Keys.BACK_SPACE
+                        })
+                    }
+                } catch (e: StaleElementReferenceException) {
+                    throw RetryException("stale element reference", e)
+                }
             }
             return this
         }
@@ -92,7 +115,13 @@ data class jQuery(
 
         override fun sendKeys(text: CharSequence, rateMillis: Int?): IEl {
             if (rateMillis == null) {
-                element().sendKeys(text)
+                jq.waitFor("could not refresh element") {
+                    try {
+                        element().sendKeys(text)
+                    } catch (e: StaleElementReferenceException) {
+                        throw RetryException("stale element reference", e)
+                    }
+                }
             } else {
                 jq.waitFor(
                     "Could not send keys",
@@ -138,8 +167,13 @@ data class jQuery(
             return copy(atMost = null, atLeast = null).elements().isNotEmpty()
         }
 
+        override fun <T> ifExists(fn: IEl.() -> T): T? {
+            return if (maybeExists()) return null
+            else fn(this)
+        }
+
         override fun element(): RemoteWebElement {
-            return elements()[0]
+            return elements().first()
         }
 
         override fun elementsUnChecked(): List<RemoteWebElement> {
@@ -244,7 +278,6 @@ data class jQuery(
             val dr = (jq.driver as WebDriver)
             val frame = find(selector).element()
             dr.switchTo().frame(frame)
-            jq.install()
             val result = fn(copy(selector = listOf("")))
             dr.switchTo().defaultContent()
             return result
@@ -270,16 +303,18 @@ data class jQuery(
 
         override fun either(
             left: String, right: String
-        ): Either<IEl, IEl> {
+        ): Either {
+            return either(find(left), find(right))
+        }
+
+        override fun either(left: IEl, right: IEl): Either {
             return jq.waitFor("Either left or right not found, or both found") {
-                val leftEl = find(left)
-                val rightEl = find(right)
-                val leftElements = leftEl.elementsUnChecked()
-                val rightElements = rightEl.elementsUnChecked()
+                val leftElements = left.elementsUnChecked()
+                val rightElements = right.elementsUnChecked()
                 if (leftElements.size == 1) {
-                    Either.left(leftEl)
+                    Either(left, left = true)
                 } else if (rightElements.size == 1) {
-                    Either.right(rightEl)
+                    Either(right, left = false)
                 } else {
                     throw RetryException("Either no elements found, or both elements found")
                 }
