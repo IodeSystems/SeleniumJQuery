@@ -24,12 +24,12 @@ data class jQuery(
         private val el: IEl, private val left: Boolean
     ) : IEl by el {
         fun <T> left(fn: IEl.() -> T): T? {
-            return if (left) null
-            else fn(el)
+            return if (left) fn(el)
+            else null
         }
 
         fun <T> right(fn: IEl.() -> T): T? {
-            return if (!left) null
+            return if (left) null
             else fn(el)
         }
     }
