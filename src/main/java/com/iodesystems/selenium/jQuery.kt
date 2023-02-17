@@ -2,6 +2,7 @@ package com.iodesystems.selenium
 
 import org.openqa.selenium.*
 import org.openqa.selenium.interactions.Actions
+import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException
 import org.openqa.selenium.remote.RemoteWebDriver
 import org.openqa.selenium.remote.RemoteWebElement
 import org.openqa.selenium.support.ui.FluentWait
@@ -35,7 +36,7 @@ data class jQuery(
     }
 
     interface IEl {
-        fun click(force: Boolean = false): IEl
+        fun click(): IEl
         fun clear(force: Boolean = false): IEl
         fun text(): String
         fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
@@ -74,36 +75,44 @@ data class jQuery(
         val atMost: Int? = null,
     ) : IEl {
 
-        override fun click(force: Boolean): IEl {
+        private fun <T> safely(el: RemoteWebElement, fn: RemoteWebElement.() -> T): T {
             try {
-                jq.waitFor("could not refresh element") {
-                    try {
-                        element().click()
-                    } catch (e: StaleElementReferenceException) {
-                        throw RetryException("stale element reference", e)
-                    }
+                return fn(el)
+            } catch (e: StaleElementReferenceException) {
+                throw RetryException("Stale element reference", e)
+            } catch (e: MoveTargetOutOfBoundsException) {
+                try {
+                    Actions(jq.driver as WebDriver).moveToElement(el).perform()
+                } catch (e: MoveTargetOutOfBoundsException) {
+                    jq.driver.executeScript("arguments[0].scrollIntoView()", el)
+                    throw RetryException("Element cannot be scrolled to", e)
                 }
-            } catch (e: ElementClickInterceptedException) {
-                if (force) {
-                    jq.driver.executeScript("arguments[0].click()", element())
-                } else throw e
+                throw RetryException("Element requires scrolling to", e)
+            }
+        }
 
+        override fun click(): IEl {
+            jq.waitFor("could not refresh element") {
+                try {
+                    safely(element()) {
+                        click()
+                    }
+                } catch (e: ElementClickInterceptedException) {
+                    jq.driver.executeScript("arguments[0].click()", element())
+                }
             }
             return this
         }
 
         override fun clear(force: Boolean): IEl {
             jq.waitFor("could not refresh element") {
-                try {
-                    val el = element()
-                    el.clear()
+                safely(element()) {
+                    clear()
                     if (force) {
-                        el.sendKeys((0..(el.getAttribute("value").length)).joinToString("") {
+                        sendKeys((0..(getAttribute("value").length)).joinToString("") {
                             Keys.BACK_SPACE
                         })
                     }
-                } catch (e: StaleElementReferenceException) {
-                    throw RetryException("stale element reference", e)
                 }
             }
             return this
@@ -116,10 +125,8 @@ data class jQuery(
         override fun sendKeys(text: CharSequence, rateMillis: Int?): IEl {
             if (rateMillis == null) {
                 jq.waitFor("could not refresh element") {
-                    try {
-                        element().sendKeys(text)
-                    } catch (e: StaleElementReferenceException) {
-                        throw RetryException("stale element reference", e)
+                    safely(element()) {
+                        sendKeys(text)
                     }
                 }
             } else {
@@ -132,14 +139,13 @@ data class jQuery(
                     if (elements.size != 1) {
                         throw RetryException("Elements for $selector not 1, but ${elements.size}")
                     }
-                    val actions = Actions(jq.driver as WebDriver).click(elements[0])
-                    val actionWithKeys = text.fold(actions) { a, c ->
-                        a.pause(Duration.ofMillis(rateMillis.toLong())).sendKeys(c.toString())
-                    }
-                    try {
-                        actionWithKeys.perform()
-                    } catch (e: Exception) {
-                        throw RetryException("Could not interact", e)
+                    safely(elements[0]) {
+                        text.fold(
+                            Actions(jq.driver as WebDriver)
+                                .click(this)
+                        ) { a, c ->
+                            a.pause(Duration.ofMillis(rateMillis.toLong())).sendKeys(c.toString())
+                        }.perform()
                     }
                 }
             }
