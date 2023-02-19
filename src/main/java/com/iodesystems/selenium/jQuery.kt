@@ -37,7 +37,7 @@ data class jQuery(
 
     interface IEl {
         fun click(): IEl
-        fun clear(force: Boolean = false): IEl
+        fun clear(): IEl
         fun text(): String
         fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
         fun contains(text: String): IEl
@@ -104,15 +104,14 @@ data class jQuery(
             return this
         }
 
-        override fun clear(force: Boolean): IEl {
+        override fun clear(): IEl {
             jq.waitFor("could not refresh element") {
                 safely(element()) {
                     clear()
-                    if (force) {
-                        sendKeys((0..(getAttribute("value").length)).joinToString("") {
-                            Keys.BACK_SPACE
-                        })
-                    }
+                    val length = getAttribute("value").length
+                    if (length > 0) sendKeys((0..(getAttribute("value").length)).joinToString("") {
+                        Keys.BACK_SPACE
+                    })
                 }
             }
             return this
