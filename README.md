@@ -10,7 +10,7 @@ The technology from the 90s is still saving us from bad design today!
 <dependency>
   <groupId>com.iodesystems.selenium-jquery</groupId>
   <artifactId>selenium-jquery</artifactId>
-  <version>2.0.1</version>
+  <version>2.1.3</version>
 </dependency>
 ```
 
@@ -37,25 +37,43 @@ using `webdrivermanager`:
 
 Creating the driver and `jQuery` instance:
 ```kotlin
-// Use
-val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder().build()
-// Suppress pesky, pointless messages
+// Use WebDriverManager to ensure full selenium protocol compatibility for performance
+WebDriverManager.chromedriver().setup()
+// Silence as much noise as possible
+val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder()
+    .withSilent(true)
+    .build()
 chromeDriverService.sendOutputTo(NullOutputStream.NULL_OUTPUT_STREAM)
-val driver = ChromeDriver(chromeDriverService, ChromeOptions())
-val jq = jQuery(
-    driver,
-    // helpful for testing development:
-    logToBrowser=true,
-    logToStdout=true
+
+var options = ChromeOptions()
+// Disable attempts to save things to the profile
+options.setExperimentalOption(
+    "prefs", mapOf(
+        "autofill.profile_enabled" to false
+    )
 )
+// Don't show popup notifications
+options.addArguments("--disable-notifications")
+// Ignore prompts
+options.setUnhandledPromptBehaviour(UnexpectedAlertBehaviour.DISMISS)
+// Don't bother waiting for the entire dom to load, if you can do your thang already
+options.setPageLoadStrategy(PageLoadStrategy.EAGER)
+if (headless) {
+    options = options
+        .addArguments("--headless")
+        .addArguments("window-size=1920,1080")
+}
+val driver = ChromeDriver(chromeDriverService, options)
+// Set some sane amount of timeout so tests don't hang on issues
+driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5))
 ```
 
 Using the `jQuery` object:
 ```kotlin
 jq.page("http://google.com") {
-    child("input[name='q']").sendKeys("hello world", 30)
-    child("input[value='Google Search']").first().click()
-    child("#result-stats").exists()
+    find("input[name='q']").sendKeys("hello world", 30)
+    find("input[value='Google Search']").first().click()
+    find("#result-stats").visible()
 }
 ```
 
@@ -63,13 +81,13 @@ Nested objects, parent and child traversals:
 ```kotlin
 jq.page("http://some-page.com") {
     frame("#frame-id") {
-        child(".hidden-in-frame").parent(".most-recent-parent-containing") {
-            child(".child-of-that-parent")
+        find(".hidden-in-frame").parent(".most-recent-parent-containing") {
+            find(".child-of-that-parent")
         }
     }
-    child(".a"){
+    find(".a"){
         // Hierarchy can be nested as far as you like
-        child(".b"){
+        find(".b"){
             // Reroot breaks out of hierarchy            
             reroot("body").exists()
         }
@@ -80,9 +98,9 @@ jq.page("http://some-page.com") {
 More aggressive testing for difficult controls:
 ```kotlin
 // Not direct clicking due to bubbling? FORCE IT!
-child(".weird-control").clickForce()
+find(".weird-control").clickForce()
 // Controlled text input masking things all weird? Put a delay in it!
-child(".text-settling-input").clear().sendKeys("important", delayMilis = 100)
+find(".text-settling-input").clear().sendKeys("important", delayMilis = 100)
 ```
 
 Extension
@@ -93,18 +111,18 @@ extend the `IEl` object with `kotlin`'s extension functions:
 ```kotlin
 // Some examples for the Mui framework and general time savers:
 fun jQuery.IEl.inputLabeled(label: String) =
-  child(".MuiInputBase-formControl")
+  find(".MuiInputBase-formControl")
       .contains(label)
-      .child(":input:first")
+      .find(":input:first")
 fun jQuery.IEl.buttonLabeled(label: String) = 
-    child("button")
+    find("button")
     .contains(label)
     .enabled()
 fun jQuery.IEl.linkWithText(text: String) = 
-    child("a")
+    find("a")
         .contains(text)
 fun jQuery.IEl.buttonWithIcon(icon: String) = 
-    child("svg[data-testid='$icon']")
+    find("svg[data-testid='$icon']")
         .parent("button")
 ```
 
@@ -113,14 +131,14 @@ Custom domain objects are also a breeze:
 // Page Object DSL
 data class Dialog(val el:IEl) : IEl by el {
     fun password(password:String) = inputLabeled("Password").first().sendKeys(password)
-    fun submit() = child("button[type=submit]").click()
+    fun submit() = find("button[type=submit]").click()
 }
 // Bootstrap extension:
 fun <T> jQuery.IEl.dialog(
     label: String,
     fn: Dialog.()->T
 ) {
-    val el = child(".dialog-container").contains(label)
+    val el = find(".dialog-container").contains(label)
     return fn(Dialog(el))
 }
 // Usage:

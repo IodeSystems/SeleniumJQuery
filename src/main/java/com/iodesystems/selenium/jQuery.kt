@@ -37,6 +37,8 @@ data class jQuery(
     }
 
     interface IEl {
+        fun atLeast(): Int?
+        fun atMost(): Int?
         fun click(): IEl
         fun clear(): IEl
         fun text(): String
@@ -53,6 +55,7 @@ data class jQuery(
         fun elementsUnChecked(): List<RemoteWebElement>
         fun elements(): List<RemoteWebElement>
         fun renderScript(): String
+        fun renderSelector(): String
 
         // Generic child finder
         fun findAll(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
@@ -71,7 +74,7 @@ data class jQuery(
 
         fun either(left: String, right: String): Either
         fun either(left: IEl, right: IEl): Either
-        fun first(first: IEl, vararg rest: IEl): IEl
+        fun first(first: IEl, vararg rest: IEl): IEl?
         fun escape(string: String): String
         fun enabled(): IEl
         fun first(): IEl
@@ -90,7 +93,10 @@ data class jQuery(
         val atMost: Int? = null,
     ) : IEl {
 
-        private fun <T> safely(el: RemoteWebElement, fn: RemoteWebElement.() -> T): T {
+        private fun <T> safely(
+            el: RemoteWebElement,
+            fn: RemoteWebElement.() -> T
+        ): T {
             try {
                 return fn(el)
             } catch (e: StaleElementReferenceException) {
@@ -106,8 +112,16 @@ data class jQuery(
             }
         }
 
+        override fun atLeast(): Int? {
+            return atLeast
+        }
+
+        override fun atMost(): Int? {
+            return atMost
+        }
+
         override fun click(): IEl {
-            jq.waitFor("could not refresh element") {
+            jq.waitFor("could not click") {
                 try {
                     safely(element()) {
                         click()
@@ -120,7 +134,7 @@ data class jQuery(
         }
 
         override fun clear(): IEl {
-            jq.waitFor("could not refresh element") {
+            jq.waitFor("could not clear element") {
                 safely(element()) {
                     clear()
                     val length = getAttribute("value").length
@@ -138,7 +152,7 @@ data class jQuery(
 
         override fun sendKeys(text: CharSequence, rateMillis: Int?): IEl {
             if (rateMillis == null) {
-                jq.waitFor("could not refresh element") {
+                jq.waitFor("Could not send keys") {
                     safely(element()) {
                         sendKeys(text)
                     }
@@ -197,7 +211,7 @@ data class jQuery(
         }
 
         override fun maybeExists(): Boolean {
-            return copy(atMost = null, atLeast = null).elements().isNotEmpty()
+            return elementsUnChecked().isNotEmpty()
         }
 
         override fun <T> ifExists(fn: IEl.() -> T): T? {
@@ -230,26 +244,16 @@ data class jQuery(
         }
 
         override fun elements(): List<RemoteWebElement> {
-            return jq.waitFor("Elements") {
-                val elements = elementsUnChecked()
-                if (atLeast != null) {
-                    if (elements.size < atLeast) {
-                        throw RetryException("Not enough elements found: \n${renderScript()}")
-                    }
-                }
-                if (atMost != null) {
-                    if (elements.size > atMost) {
-                        throw RetryException("Too many elements found: \n${renderScript()}")
-                    }
-                }
-                elements
-            }
+            return jq.search(listOf(this)).first()!!
+        }
+
+        override fun renderSelector(): String {
+            return selector.joinToString(", ")
         }
 
         override fun renderScript(): String {
-            val encoded = jq.escape(selector.joinToString(", "))
             return """
-                jQuery($encoded)
+                jQuery(${escape(renderSelector())})
             """.trimIndent()
         }
 
@@ -313,13 +317,14 @@ data class jQuery(
             return jq.escape(string)
         }
 
-        override fun first(first: IEl, vararg rest: IEl): IEl {
+        override fun first(first: IEl, vararg rest: IEl): IEl? {
             val all = listOf(first) + rest.toList()
-            return waitFor {
-                all.find {
-                    it.elementsUnChecked().size == 1
-                }
+            val results = jq.search(all)
+            val found = results.find { it != null }
+            if (found != null) {
+                return all[results.indexOf(found)]
             }
+            return null
         }
 
         override fun first(): IEl {
@@ -369,8 +374,9 @@ data class jQuery(
 
         override fun either(left: IEl, right: IEl): Either {
             return jq.waitFor("Either left or right not found, or both found") {
-                val leftElements = left.elementsUnChecked()
-                val rightElements = right.elementsUnChecked()
+                val results = jq.search(listOf(left, right))
+                val leftElements = results[0] ?: emptyList()
+                val rightElements = results[1] ?: emptyList()
                 if (leftElements.size == 1) {
                     Either(left, left = true)
                 } else if (rightElements.size == 1) {
@@ -397,17 +403,41 @@ data class jQuery(
     }
 
     fun install() {
-        if (driver.executeScript("return typeof window.jQuery") == "undefined") {
-            val jQueryStream = javaClass.getResourceAsStream("/jquery-3.6.3.min.js")
-            val jQueryStreamBuffer = ByteArrayOutputStream()
-            jQueryStream?.transferTo(jQueryStreamBuffer)
-            val jQueryContent = jQueryStreamBuffer.toString()
-            driver.executeScript(jQueryContent)
+        mapOf(
+            "jQuery" to "jquery-3.6.3.min.js",
+            "SeleniumJQuery" to "selenium-jquery-helpers.js"
+        ).map { entry ->
+            if (driver.executeScript("return typeof window.${entry.key}") == "undefined") {
+                val jQueryStream = javaClass.getResourceAsStream("/${entry.value}")
+                val jQueryStreamBuffer = ByteArrayOutputStream()
+                jQueryStream?.transferTo(jQueryStreamBuffer)
+                val jQueryContent = jQueryStreamBuffer.toString()
+                driver.executeScript(jQueryContent)
+            }
         }
     }
 
     fun escape(string: String): String {
         return '"' + string.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + '"'
+    }
+
+    fun search(els: List<IEl>): List<List<RemoteWebElement>?> {
+        fun run(): List<List<RemoteWebElement>?> {
+            @Suppress("UNCHECKED_CAST")
+            return driver.executeAsyncScript(
+                "SeleniumJQuery.search(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4])",
+                logQueriesToBrowser,
+                els.map { it.renderSelector() },
+                els.map { it.atLeast() },
+                els.map { it.atMost() }
+            ) as List<List<RemoteWebElement>?>
+        }
+        return try {
+            run()
+        } catch (e: JavascriptException) {
+            install()
+            run()
+        }
     }
 
     fun <T> waitFor(

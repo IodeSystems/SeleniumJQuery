@@ -18,6 +18,7 @@ class jQueryTest {
             .build()
         chromeDriverService.sendOutputTo(NullOutputStream.NULL_OUTPUT_STREAM)
         val options = ChromeOptions()
+        options.addArguments("--auto-open-devtools-for-tabs")
         options.setPageLoadStrategy(PageLoadStrategy.EAGER)
         val driver = ChromeDriver(chromeDriverService, options)
         try {
