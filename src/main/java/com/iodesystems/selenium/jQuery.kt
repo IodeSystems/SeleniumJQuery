@@ -44,7 +44,7 @@ data class jQuery(
         fun contains(text: String): IEl
         fun value(): String
         fun gone()
-        fun exists()
+        fun visible(): IEl
         fun ensureEnabled(): IEl
         fun ensureDisabled(): IEl
         fun maybeExists(): Boolean
@@ -190,8 +190,10 @@ data class jQuery(
             return this
         }
 
-        override fun exists() {
-            copy(atMost = null, atLeast = 1).elements()
+        override fun visible(): IEl {
+            return copy(atMost = null, atLeast = 1).waitUntil {
+                elements().find { it.isDisplayed } != null
+            }
         }
 
         override fun maybeExists(): Boolean {
@@ -223,6 +225,7 @@ data class jQuery(
             if (jq.logQueriesToStdout) {
                 println(script)
             }
+
             @Suppress("UNCHECKED_CAST") return jq.driver.executeScript(execute) as List<RemoteWebElement>
         }
 

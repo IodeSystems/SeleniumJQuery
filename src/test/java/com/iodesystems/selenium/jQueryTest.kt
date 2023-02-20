@@ -33,7 +33,7 @@ class jQueryTest {
             jq.page("http://google.com") {
                 find("input[name='q']").sendKeys("hello world", 30)
                 find("input[value='Google Search']").first().click()
-                find("#result-stats").exists()
+                find("#result-stats").visible()
             }
         }
     }
