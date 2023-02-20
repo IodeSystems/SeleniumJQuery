@@ -1,5 +1,6 @@
 package com.iodesystems.selenium
 
+import io.github.bonigarcia.wdm.WebDriverManager
 import org.apache.commons.io.output.NullOutputStream
 import org.junit.Test
 import org.openqa.selenium.PageLoadStrategy
@@ -11,6 +12,7 @@ import org.openqa.selenium.chrome.ChromeOptions
 class jQueryTest {
 
     fun subject(fn: (jq: jQuery) -> Unit) {
+        WebDriverManager.chromedriver().setup()
         val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder()
             .withSilent(true)
             .build()

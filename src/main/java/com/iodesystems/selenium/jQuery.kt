@@ -21,6 +21,7 @@ data class jQuery(
         message: String, cause: Throwable? = null
     ) : Exception(message, cause)
 
+    @Suppress("unused")
     data class Either(
         private val el: IEl, private val left: Boolean
     ) : IEl by el {
@@ -44,28 +45,42 @@ data class jQuery(
         fun value(): String
         fun gone()
         fun exists()
+        fun ensureEnabled(): IEl
+        fun ensureDisabled(): IEl
         fun maybeExists(): Boolean
         fun <T> ifExists(fn: IEl.() -> T): T?
         fun element(): RemoteWebElement
         fun elementsUnChecked(): List<RemoteWebElement>
         fun elements(): List<RemoteWebElement>
         fun renderScript(): String
+
+        // Generic child finder
         fun findAll(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
-        fun find(childSelector: String): IEl
+        fun findAll(childSelector: List<String>, atLeast: Int? = 1, atMost: Int? = null): IEl
+
+        // Single child finders
+        fun <T> find(childSelector: List<String>, fn: IEl.() -> T): T
         fun <T> find(childSelector: String, fn: IEl.() -> T): T
-        fun parent(parentSelector: String): IEl
-        fun <T> parent(parentSelector: String, fn: IEl.() -> T): T
-        fun parents(parentSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
+        fun find(childSelector: List<String>): IEl
+        fun find(childSelector: String): IEl
+
+        // Parent finders
+        fun parent(parentSelector: String, atLeast: Int? = 1, atMost: Int? = 1): IEl
+        fun parent(parentSelector: List<String>, atLeast: Int? = 1, atMost: Int? = 1): IEl
+
+
         fun either(left: String, right: String): Either
         fun either(left: IEl, right: IEl): Either
+        fun first(first: IEl, vararg rest: IEl): IEl
+        fun escape(string: String): String
         fun enabled(): IEl
         fun first(): IEl
         fun selectValue(value: String): IEl
         fun last(): IEl
         fun reroot(selector: String): IEl
         fun <T> withFrame(selector: String, fn: IEl.() -> T): T
-        fun waitUntil(message: String? = null, fn: IEl.() -> Boolean): IEl
-        fun <T> waitFor(message: String? = null, fn: IEl.() -> T?): T
+        fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
+        fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
     }
 
     data class El(
@@ -129,6 +144,7 @@ data class jQuery(
                     }
                 }
             } else {
+                val script = renderScript()
                 jq.waitFor(
                     "Could not send keys",
                     retry = Duration.ofMillis(text.length * rateMillis.toLong()),
@@ -136,7 +152,7 @@ data class jQuery(
                 ) {
                     val elements = elementsUnChecked()
                     if (elements.size != 1) {
-                        throw RetryException("Elements for $selector not 1, but ${elements.size}")
+                        throw RetryException("Elements for $script not 1, but ${elements.size}")
                     }
                     safely(elements[0]) {
                         text.fold(
@@ -162,6 +178,16 @@ data class jQuery(
 
         override fun gone() {
             copy(atMost = 0, atLeast = null).elements()
+        }
+
+        override fun ensureEnabled(): El {
+            copy(atMost = 1, atLeast = 1).waitUntil("Was not enabled") { element().isEnabled }
+            return this
+        }
+
+        override fun ensureDisabled(): El {
+            copy(atMost = 1, atLeast = 1).waitUntil("Was not disabled") { !element().isEnabled }
+            return this
         }
 
         override fun exists() {
@@ -205,12 +231,12 @@ data class jQuery(
                 val elements = elementsUnChecked()
                 if (atLeast != null) {
                     if (elements.size < atLeast) {
-                        throw RetryException("Not enough elements found looking for: \n${renderScript()}")
+                        throw RetryException("Not enough elements found: \n${renderScript()}")
                     }
                 }
                 if (atMost != null) {
                     if (elements.size > atMost) {
-                        throw RetryException("Too many elements found looking for: \n${renderScript()}")
+                        throw RetryException("Too many elements found: \n${renderScript()}")
                     }
                 }
                 elements
@@ -224,35 +250,49 @@ data class jQuery(
             """.trimIndent()
         }
 
-        override fun findAll(childSelector: String, atLeast: Int?, atMost: Int?): IEl {
+        override fun findAll(childSelector: List<String>, atLeast: Int?, atMost: Int?): IEl {
             return copy(
-                selector = selector.map { "$it $childSelector".trim() },
+                selector = selector.map { parent ->
+                    childSelector.map { child ->
+                        "$parent $child".trim()
+                    }
+                }.flatten(),
                 atLeast = atLeast,
                 atMost = atMost,
             )
         }
 
+        override fun findAll(childSelector: String, atLeast: Int?, atMost: Int?): IEl {
+            return findAll(listOf(childSelector), atLeast, atMost)
+        }
+
+        override fun <T> find(childSelector: List<String>, fn: IEl.() -> T): T {
+            return find(childSelector).run(fn)
+        }
+
+        override fun find(childSelector: List<String>): IEl {
+            return findAll(childSelector, 1, 1)
+        }
+
         override fun find(childSelector: String): IEl {
-            return copy(
-                selector = selector.map { "$it $childSelector".trim() }, atLeast = 1, atMost = 1
-            )
+            return find(listOf(childSelector))
         }
 
         override fun <T> find(childSelector: String, fn: IEl.() -> T): T {
             return fn(find(childSelector))
         }
 
-        override fun parent(parentSelector: String): IEl {
-            return parents(parentSelector, 1, 1)
+        override fun parent(parentSelector: String, atLeast: Int?, atMost: Int?): IEl {
+            return parent(listOf(parentSelector), atLeast, atMost)
         }
 
-        override fun <T> parent(parentSelector: String, fn: IEl.() -> T): T {
-            return fn(parent(parentSelector))
-        }
-
-        override fun parents(parentSelector: String, atLeast: Int?, atMost: Int?): IEl {
+        override fun parent(parentSelector: List<String>, atLeast: Int?, atMost: Int?): IEl {
             return copy(
-                selector = listOf("$parentSelector:has(${selector.joinToString(",")}):last"),
+                selector = parentSelector.map { parent ->
+                    selector.map { child ->
+                        "$parent:has(${child}):last"
+                    }
+                }.flatten(),
                 atLeast = atLeast,
                 atMost = atMost
             )
@@ -264,6 +304,19 @@ data class jQuery(
 
         override fun reroot(selector: String): IEl {
             return copy(selector = listOf(selector), atLeast = 1, atMost = null)
+        }
+
+        override fun escape(string: String): String {
+            return jq.escape(string)
+        }
+
+        override fun first(first: IEl, vararg rest: IEl): IEl {
+            val all = listOf(first) + rest.toList()
+            return waitFor {
+                all.find {
+                    it.elementsUnChecked().size == 1
+                }
+            }
         }
 
         override fun first(): IEl {
@@ -288,20 +341,19 @@ data class jQuery(
             return result
         }
 
-        override fun waitUntil(message: String?, fn: IEl.() -> Boolean): IEl {
-            val message = message ?: "provided condition was not true"
-            jq.waitFor(message) {
+        override fun waitUntil(message: String, fn: IEl.() -> Boolean): IEl {
+            val msg = "Timeout waiting for $$message on ${renderScript()}"
+            jq.waitFor(msg) {
                 if (!fn(this)) {
-                    throw RetryException("Timeout while $message")
+                    throw RetryException(msg)
                 }
             }
             return this
         }
 
-        override fun <T> waitFor(message: String?, fn: IEl.() -> T?): T {
-            val message = message ?: "no value returned"
+        override fun <T> waitFor(message: String, fn: IEl.() -> T?): T {
             return jq.waitFor(message) {
-                fn(this) ?: throw RetryException("Timeout while $message")
+                fn(this) ?: throw RetryException("Timeout waiting for $message on ${renderScript()}")
             }
         }
 
@@ -321,7 +373,21 @@ data class jQuery(
                 } else if (rightElements.size == 1) {
                     Either(right, left = false)
                 } else {
-                    throw RetryException("Either no elements found, or both elements found")
+                    val script = """
+                        left: ${left.renderScript()}
+                        right: ${right.renderScript()}
+                        
+                    """.trimIndent()
+                    if (leftElements.isEmpty()) {
+                        throw RetryException(
+                            "Either found no elements:\n${script}"
+                        )
+                    } else {
+                        throw RetryException(
+                            "Either found both elements:\n${script}"
+                        )
+                    }
+
                 }
             }
         }
@@ -355,22 +421,24 @@ data class jQuery(
             }
     }
 
-    fun <T> page(fn: El.() -> T): T {
-        return fn(find("", null))
-    }
-
     fun <T> page(url: String, fn: El.() -> T): T {
         driver.get(url)
-        return page(fn)
+        return fn(find())
     }
 
     fun find(
-        selector: String,
+        selector: String = "html",
+        atLeast: Int? = 1,
+        atMost: Int? = null,
+    ): El = find(listOf(selector), atLeast, atMost)
+
+    fun find(
+        selector: List<String>,
         atLeast: Int? = 1,
         atMost: Int? = null,
     ): El {
         return El(
-            jq = this, selector = listOf(selector), atLeast = atLeast, atMost = atMost
+            jq = this, selector = selector, atLeast = atLeast, atMost = atMost
         )
     }
 }
