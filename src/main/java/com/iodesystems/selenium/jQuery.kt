@@ -422,21 +422,19 @@ data class jQuery(
     }
 
     fun search(els: List<IEl>): List<List<RemoteWebElement>?> {
-        fun run(): List<List<RemoteWebElement>?> {
-            @Suppress("UNCHECKED_CAST")
-            return driver.executeAsyncScript(
-                "SeleniumJQuery.search(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4])",
-                logQueriesToBrowser,
-                els.map { it.renderSelector() },
-                els.map { it.atLeast() },
-                els.map { it.atMost() }
-            ) as List<List<RemoteWebElement>?>
-        }
-        return try {
-            run()
-        } catch (e: JavascriptException) {
-            install()
-            run()
+        return waitFor("Search query to return stable results") {
+            try {
+                @Suppress("UNCHECKED_CAST")
+                driver.executeAsyncScript(
+                    "SeleniumJQuery.search(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4])",
+                    logQueriesToBrowser,
+                    els.map { it.renderSelector() },
+                    els.map { it.atLeast() },
+                    els.map { it.atMost() }
+                ) as List<List<RemoteWebElement>?>
+            } catch (e: StaleElementReferenceException) {
+                throw RetryException("Stale element returned", e)
+            }
         }
     }
 
