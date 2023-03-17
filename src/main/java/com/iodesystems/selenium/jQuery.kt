@@ -37,6 +37,7 @@ data class jQuery(
     }
 
     interface IEl {
+        fun actions(): Actions
         fun atLeast(): Int?
         fun atMost(): Int?
         fun click(): IEl
@@ -112,6 +113,10 @@ data class jQuery(
             }
         }
 
+        override fun actions(): Actions {
+            return Actions(jq.driver)
+        }
+
         override fun atLeast(): Int? {
             return atLeast
         }
@@ -122,12 +127,17 @@ data class jQuery(
 
         override fun click(): IEl {
             jq.waitFor("could not click") {
+                val element = element()
                 try {
-                    safely(element()) {
-                        click()
+                    try {
+                        safely(element) {
+                            click()
+                        }
+                    } catch (e: ElementClickInterceptedException) {
+                        jq.driver.executeScript("arguments[0].click()", element)
                     }
-                } catch (e: ElementClickInterceptedException) {
-                    jq.driver.executeScript("arguments[0].click()", element())
+                } catch (e: StaleElementReferenceException) {
+                    throw RetryException("Stale element", e)
                 }
             }
             return this
