@@ -224,23 +224,9 @@ data class jQuery(
         }
 
         override fun elementsUnChecked(): List<RemoteWebElement> {
-            val script = renderScript()
-            val execute = if (jq.logQueriesToBrowser) {
-                val scriptEncoded = jq.escape(script)
-                """
-                  console.log($scriptEncoded);
-                  return $script
-                """.trimIndent()
-            } else {
-                """
-                  return $script
-                """.trimIndent()
-            }
-            if (jq.logQueriesToStdout) {
-                println(script)
-            }
-
-            @Suppress("UNCHECKED_CAST") return jq.driver.executeScript(execute) as List<RemoteWebElement>
+            return jq.search(
+                listOf(this.copy(atLeast = null, atMost = null))
+            ).firstOrNull() ?: emptyList()
         }
 
         override fun elements(): List<RemoteWebElement> {
@@ -407,6 +393,9 @@ data class jQuery(
             "jQuery" to "jquery-3.6.3.min.js",
             "SeleniumJQuery" to "selenium-jquery-helpers.js"
         ).map { entry ->
+            if (logQueriesToStdout) {
+                println("Installing ${entry.key} from ${entry.value}")
+            }
             if (driver.executeScript("return typeof window.${entry.key}") == "undefined") {
                 val jQueryStream = javaClass.getResourceAsStream("/${entry.value}")
                 val jQueryStreamBuffer = ByteArrayOutputStream()
@@ -424,6 +413,9 @@ data class jQuery(
     fun search(els: List<IEl>): List<List<RemoteWebElement>?> {
         return waitFor("Search query to return stable results") {
             try {
+                if (logQueriesToStdout) {
+                    println(els.joinToString("; ") { it.renderScript() } + ";")
+                }
                 @Suppress("UNCHECKED_CAST")
                 driver.executeAsyncScript(
                     "SeleniumJQuery.search(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4])",
@@ -434,15 +426,23 @@ data class jQuery(
                 ) as List<List<RemoteWebElement>?>
             } catch (e: StaleElementReferenceException) {
                 throw RetryException("Stale element returned", e)
+            } catch (e: ScriptTimeoutException) {
+                throw RetryException("Script timeout", e)
             }
         }
     }
 
     fun <T> waitFor(
-        failureMessage: String, retry: Duration? = null, timeOut: Duration? = null, t: () -> T
+        failureMessage: String,
+        retry: Duration? = null,
+        timeOut: Duration? = null,
+        t: () -> T
     ): T {
-        return FluentWait(driver).withTimeout(timeOut ?: timeout).pollingEvery(retry ?: Duration.ofMillis(100))
-            .withMessage(failureMessage).ignoring(RetryException::class.java).until {
+        return FluentWait(driver)
+            .withTimeout(timeOut ?: timeout)
+            .pollingEvery(retry ?: Duration.ofMillis(10))
+            .withMessage(failureMessage)
+            .ignoring(RetryException::class.java).until {
                 try {
                     t()
                 } catch (e: JavascriptException) {

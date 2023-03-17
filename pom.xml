@@ -33,7 +33,7 @@
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.version>1.8.10</kotlin.version>
-        <selenium.version>4.8.0</selenium.version>
+        <selenium.version>4.8.1</selenium.version>
     </properties>
 
     <scm>
@@ -226,7 +226,7 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
+            <artifactId>kotlin-test-junit</artifactId>
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
@@ -257,8 +257,41 @@
             <artifactId>webdrivermanager</artifactId>
             <version>5.3.2</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcprov-jdk15on</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>1.70</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.14.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
 
     <distributionManagement>
         <snapshotRepository>
