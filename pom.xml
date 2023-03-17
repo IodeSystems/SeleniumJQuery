@@ -5,7 +5,7 @@
 
     <groupId>com.iodesystems.selenium-jquery</groupId>
     <artifactId>selenium-jquery</artifactId>
-    <version>2.1.6-SNAPSHOT</version>
+    <version>2.1.6</version>
     <packaging>jar</packaging>
 
     <name>SeleniumJQuery</name>
@@ -40,7 +40,7 @@
         <connection>scm:git:git@github.com:Nthalk/SeleniumJQuery.git</connection>
         <developerConnection>scm:git:git@github.com:Nthalk/SeleniumJQuery.git</developerConnection>
         <url>http://nthalk.github.io/SeleniumJQuery/</url>
-        <tag>selenium-jquery-2.0.0</tag>
+        <tag>selenium-jquery-2.1.6</tag>
     </scm>
 
     <profiles>
