@@ -81,7 +81,7 @@ data class jQuery(
         fun first(): IEl
         fun selectValue(value: String): IEl
         fun last(): IEl
-        fun reroot(selector: String): IEl
+        fun reroot(selector: String? = null): IEl
         fun <T> withFrame(selector: String, fn: IEl.() -> T): T
         fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
         fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
@@ -205,12 +205,22 @@ data class jQuery(
         }
 
         override fun ensureEnabled(): El {
-            copy(atMost = 1, atLeast = 1).waitUntil("Was not enabled") { element().isEnabled }
+            copy(
+                atMost = 1,
+                atLeast = 1,
+                selector = selector.take(selector.size - 1) +
+                        (selector.last() + ":enabled")
+            ).element()
             return this
         }
 
         override fun ensureDisabled(): El {
-            copy(atMost = 1, atLeast = 1).waitUntil("Was not disabled") { !element().isEnabled }
+            copy(
+                atMost = 1,
+                atLeast = 1,
+                selector = selector.take(selector.size - 1) +
+                        (selector.last() + ":disabled")
+            ).element()
             return this
         }
 
@@ -305,8 +315,12 @@ data class jQuery(
             return copy(selector = selector.map { "$it:enabled" })
         }
 
-        override fun reroot(selector: String): IEl {
-            return copy(selector = listOf(selector), atLeast = 1, atMost = null)
+        override fun reroot(selector: String?): IEl {
+            return copy(
+                selector = if (selector != null) listOf(selector) else emptyList(),
+                atLeast = 1,
+                atMost = null
+            )
         }
 
         override fun escape(string: String): String {
@@ -346,7 +360,7 @@ data class jQuery(
         }
 
         override fun waitUntil(message: String, fn: IEl.() -> Boolean): IEl {
-            val msg = "Timeout waiting for $$message on ${renderScript()}"
+            val msg = "Timeout waiting for $message on ${renderScript()}"
             jq.waitFor(msg) {
                 if (!fn(this)) {
                     throw RetryException(msg)
