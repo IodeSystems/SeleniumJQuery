@@ -57,6 +57,7 @@ data class jQuery(
         fun elements(): List<RemoteWebElement>
         fun renderScript(): String
         fun renderSelector(): String
+        fun scrollIntoView(): IEl
 
         // Generic child finder
         fun findAll(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
@@ -100,6 +101,8 @@ data class jQuery(
         ): T {
             try {
                 return fn(el)
+            } catch (e: ElementNotInteractableException) {
+                throw RetryException("Element not interactable", e)
             } catch (e: StaleElementReferenceException) {
                 throw RetryException("Stale element reference", e)
             } catch (e: MoveTargetOutOfBoundsException) {
@@ -206,28 +209,30 @@ data class jQuery(
 
         override fun ensureEnabled(): El {
             copy(
-                atMost = 1,
-                atLeast = 1,
-                selector = selector.take(selector.size - 1) +
-                        (selector.last() + ":enabled")
+                selector = selector(":enabled")
             ).element()
             return this
         }
 
         override fun ensureDisabled(): El {
             copy(
-                atMost = 1,
-                atLeast = 1,
-                selector = selector.take(selector.size - 1) +
-                        (selector.last() + ":disabled")
+                selector = selector(":disabled")
             ).element()
             return this
         }
 
+        fun selector(extension: String? = null): List<String> {
+            return if (extension != null)
+                selector.take(selector.size - 1) +
+                        (selector.last() + extension)
+            else
+                selector
+        }
+
         override fun visible(): IEl {
-            return copy(atMost = null, atLeast = 1).waitUntil {
-                elements().find { it.isDisplayed } != null
-            }
+            return copy(
+                selector = selector(":visible")
+            )
         }
 
         override fun maybeExists(): Boolean {
@@ -255,6 +260,14 @@ data class jQuery(
 
         override fun renderSelector(): String {
             return selector.joinToString(", ")
+        }
+
+        override fun scrollIntoView(): IEl {
+            jq.driver.executeScript(
+                "arguments[0].scrollIntoView({block:'end', inline:'end', behavior:'instant'})",
+                element()
+            )
+            return this
         }
 
         override fun renderScript(): String {
