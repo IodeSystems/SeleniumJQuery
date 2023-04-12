@@ -42,6 +42,7 @@ data class jQuery(
         fun atMost(): Int?
         fun click(): IEl
         fun clear(): IEl
+        fun blur(): IEl
         fun text(): String
         fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
         fun contains(text: String): IEl
@@ -86,6 +87,7 @@ data class jQuery(
         fun <T> withFrame(selector: String, fn: IEl.() -> T): T
         fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
         fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
+        fun js(script: String, vararg args: Any): Any
     }
 
     data class El(
@@ -156,6 +158,11 @@ data class jQuery(
                     })
                 }
             }
+            return this
+        }
+
+        override fun blur(): IEl {
+            actions().sendKeys(Keys.TAB).perform()
             return this
         }
 
@@ -260,6 +267,10 @@ data class jQuery(
 
         override fun renderSelector(): String {
             return selector.joinToString(", ")
+        }
+
+        override fun js(script: String, vararg args: Any): Any {
+            return jq.driver.executeScript(script, *args)
         }
 
         override fun scrollIntoView(): IEl {
