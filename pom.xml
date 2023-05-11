@@ -32,8 +32,8 @@
         <maven.compiler.source>19</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <kotlin.version>1.8.20</kotlin.version>
-        <selenium.version>4.8.3</selenium.version>
+        <kotlin.version>1.8.21</kotlin.version>
+        <selenium.version>4.9.1</selenium.version>
     </properties>
 
     <scm>
@@ -255,7 +255,7 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.3.2</version>
+            <version>5.3.3</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -287,7 +287,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.14.2</version>
+            <version>2.15.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

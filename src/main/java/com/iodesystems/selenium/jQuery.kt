@@ -48,6 +48,7 @@ data class jQuery(
         fun contains(text: String): IEl
         fun value(): String
         fun gone()
+        fun exists()
         fun visible(): IEl
         fun ensureEnabled(): IEl
         fun ensureDisabled(): IEl
@@ -212,6 +213,10 @@ data class jQuery(
 
         override fun gone() {
             copy(atMost = 0, atLeast = null).elements()
+        }
+
+        override fun exists() {
+            element()
         }
 
         override fun ensureEnabled(): El {
