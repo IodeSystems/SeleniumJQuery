@@ -51,6 +51,8 @@ class jQueryTest {
         val options = ChromeOptions()
         options.addArguments("--auto-open-devtools-for-tabs")
         options.addArguments("--remote-allow-origins=*")
+        // If you want to see the browser, comment this out
+        options.addArguments("--headless=new").addArguments("window-size=1920,1080")
         val logPrefs = LoggingPreferences()
         logPrefs.enable(LogType.BROWSER, Level.ALL)
         options.setCapability("goog:loggingPrefs", logPrefs)

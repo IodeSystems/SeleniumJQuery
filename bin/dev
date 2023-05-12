@@ -37,10 +37,14 @@ setup_mac() {
     xcode-select --install
   fi
 
+  if ! hash gsed &>/dev/null; then
+    brew install gsed
+  fi
+
   if ! command -v gpg &>/dev/null; then
-      echo Installing GPG
-      brew install gpg -y
-    fi
+    echo Installing GPG
+    brew install gpg -y
+  fi
 }
 
 updates() {
@@ -62,24 +66,48 @@ rebuild)
 clean)
   # Clean compilation
   mvn -q -e clean
+  rm -rf dataset/gen
   # Delete kotlin caches
   find ./ -type d -name '.kotlin-cache' -exec rm -rf {} \;
   ;;
+ensure-jenkins-setup)
+  $SED_COMMAND --in-place .git/config -e 's|https://github.com/|git@github.com:|'
+  VERSION="$(git rev-parse HEAD)"
+  BRANCH="v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | cut -d '.' -f1,2).x"
+  if [[ -z "$(git branch --list "$BRANCH")" ]]; then
+    BRANCH="main"
+  fi
+  git checkout "$BRANCH"
+  git pull
+  CURRENT_VERSION="$(git rev-parse HEAD)"
+  if [[ ! "${VERSION}" = "${CURRENT_VERSION}" ]]; then
+    echo "Cannot release, tip of main has moved past here."
+    exit 1
+  fi
+  ;;
 release)
   export GPG_TTY=$(tty)
-  mvn -Prelease clean release:prepare release:perform -e
-  echo "If everything looks okay, then feel free to run:"
-  echo "git push origin"
+  BRANCH="v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | cut -d '.' -f1,2).x"
+  if [[ -z "$(git branch --list "$BRANCH")" ]]; then
+    BRANCH="main"
+  fi
+  mvn -Prelease \
+    clean \
+    build-helper:parse-version \
+    release:prepare \
+    release:perform \
+    -DbranchName="$BRANCH" \
+    --errors
   ;;
 *)
   echo "The 'dev' script is for tools that fit in the development workflow
 
 Supported commands:
-  setup       ensures your system is setup
-  updates     checks for project updates
-  rebuild     resets the database, migrates, and regerenates everything
-  clean       cleans out cached files not cleaned by 'mvn clean'
-  release     builds a release version and publishes it
+  setup             ensures your system is setup
+  updates           checks for project updates
+  rebuild           resets the database, migrates, and regerenates everything
+  clean             cleans out cached files not cleaned by 'mvn clean'
+  release           builds a release version and publishes it
 "
   exit 1
   ;;
