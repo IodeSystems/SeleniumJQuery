@@ -112,7 +112,7 @@ data class jQuery(
                 try {
                     Actions(jq.driver as WebDriver).moveToElement(el).perform()
                 } catch (e: MoveTargetOutOfBoundsException) {
-                    jq.driver.executeScript("arguments[0].scrollIntoView()", el)
+                    scrollIntoView()
                     throw RetryException("Element cannot be scrolled to", e)
                 }
                 throw RetryException("Element requires scrolling to", e)
