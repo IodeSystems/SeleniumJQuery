@@ -8,6 +8,7 @@ import org.openqa.selenium.remote.RemoteWebElement
 import org.openqa.selenium.support.ui.FluentWait
 import org.openqa.selenium.support.ui.Select
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.time.Duration
 
 
@@ -60,6 +61,7 @@ data class jQuery(
         fun renderScript(): String
         fun renderSelector(): String
         fun scrollIntoView(): IEl
+        fun screenshot(destinationFile: String): IEl
 
         // Generic child finder
         fun findAll(childSelector: String, atLeast: Int? = 1, atMost: Int? = null): IEl
@@ -283,6 +285,11 @@ data class jQuery(
                 "arguments[0].scrollIntoView({block:'end', inline:'end', behavior:'instant'})",
                 element()
             )
+            return this
+        }
+
+        override fun screenshot(destinationFile: String): IEl {
+            File(destinationFile).writeBytes(jq.driver.getScreenshotAs(OutputType.BYTES))
             return this
         }
 
