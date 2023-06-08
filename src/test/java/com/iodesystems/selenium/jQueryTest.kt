@@ -25,111 +25,111 @@ import java.util.logging.Level
 
 class jQueryTest {
 
-    fun cause(ex: Throwable): Throwable {
-        var e = when (ex) {
-            is InvocationTargetException ->
-                ex.targetException
+  fun cause(ex: Throwable): Throwable {
+    var e = when (ex) {
+      is InvocationTargetException ->
+        ex.targetException
 
-            else -> ex
-        }
-        while (e.cause != null && e.cause != e) {
-            e = e.cause!!
-            when (e) {
-                is InvocationTargetException ->
-                    e = e.targetException
-            }
-        }
-        return e
+      else -> ex
     }
+    while (e.cause != null && e.cause != e) {
+      e = e.cause!!
+      when (e) {
+        is InvocationTargetException ->
+          e = e.targetException
+      }
+    }
+    return e
+  }
 
-    fun subject(fn: (jq: jQuery) -> Unit) {
-        WebDriverManager.chromedriver().setup()
-        val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder()
-            .withSilent(true)
-            .build()
-        chromeDriverService.sendOutputTo(NullOutputStream.NULL_OUTPUT_STREAM)
-        val options = ChromeOptions()
-        options.addArguments("--auto-open-devtools-for-tabs")
-        options.addArguments("--remote-allow-origins=*")
-        // If you want to see the browser, comment this out
-        options.addArguments("--headless=new").addArguments("window-size=1920,1080")
-        val logPrefs = LoggingPreferences()
-        logPrefs.enable(LogType.BROWSER, Level.ALL)
-        options.setCapability("goog:loggingPrefs", logPrefs)
-        options.setPageLoadStrategy(PageLoadStrategy.EAGER)
-        val driver = ChromeDriver(chromeDriverService, options)
-        driver.manage().timeouts().apply{
-            scriptTimeout(Duration.ofSeconds(5))
-        }
-        val jq = jQuery(
-            driver,
-            logQueriesToBrowser = true,
-            logQueriesToStdout = true
-        )
-        try {
-            fn(jq)
-        } catch (ex: Throwable) {
-            val e = cause(ex)
-            val sb = StringWriter()
-            e.printStackTrace(PrintWriter(sb))
-            val banned = listOf(
-                "java.base/java.lang.reflect",
-                "org.openqa.selenium.remote.codec",
-                "org.openqa.selenium.remote.RemoteWebElement.execute",
-                "org.openqa.selenium.remote.service.DriverCommandExecutor",
-                "org.springframework.aop",
-                "org.openqa.selenium.remote.RemoteWebDriver.execute",
-                "org.openqa.selenium.remote.HttpCommandExecutor.execute",
-                "org.openqa.selenium.support.ui.FluentWait",
-                "com.iodesystems.selenium.jQuery\$waitFor",
-                "com.iodesystems.selenium.jQuery.waitFor",
-                "org.springframework.test",
-                "\$El",
-                "\$IEl",
-                "\$Factory"
-            )
-            val stack = sb.toString().lines().filter { line ->
-                banned.find { ban -> line.contains(ban) } == null
-            }.joinToString("\n")
-            val onUrl = "On url: " + driver.currentUrl
-            val tmp = File.createTempFile(
-                "screenshot-" + OffsetDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME), ".png"
-            )
-            Files.move(
-                driver.getScreenshotAs(OutputType.FILE).absoluteFile.toPath(),
-                tmp.toPath(),
-                StandardCopyOption.REPLACE_EXISTING
-            )
-            val screenshot = "See a screenshot at file://" + tmp.absoluteFile
-            val message = e.message + """
+  fun subject(fn: (jq: jQuery) -> Unit) {
+    WebDriverManager.chromedriver().setup()
+    val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder()
+      .withSilent(true)
+      .build()
+    chromeDriverService.sendOutputTo(NullOutputStream.NULL_OUTPUT_STREAM)
+    val options = ChromeOptions()
+    options.addArguments("--auto-open-devtools-for-tabs")
+    options.addArguments("--remote-allow-origins=*")
+    // If you want to see the browser, comment this out
+    options.addArguments("--headless=new").addArguments("window-size=1920,1080")
+    val logPrefs = LoggingPreferences()
+    logPrefs.enable(LogType.BROWSER, Level.ALL)
+    options.setCapability("goog:loggingPrefs", logPrefs)
+    options.setPageLoadStrategy(PageLoadStrategy.EAGER)
+    val driver = ChromeDriver(chromeDriverService, options)
+    driver.manage().timeouts().apply {
+      scriptTimeout(Duration.ofSeconds(5))
+    }
+    val jq = jQuery(
+      driver,
+      logQueriesToBrowser = true,
+      logQueriesToStdout = true
+    )
+    try {
+      fn(jq)
+    } catch (ex: Throwable) {
+      val e = cause(ex)
+      val sb = StringWriter()
+      e.printStackTrace(PrintWriter(sb))
+      val banned = listOf(
+        "java.base/java.lang.reflect",
+        "org.openqa.selenium.remote.codec",
+        "org.openqa.selenium.remote.RemoteWebElement.execute",
+        "org.openqa.selenium.remote.service.DriverCommandExecutor",
+        "org.springframework.aop",
+        "org.openqa.selenium.remote.RemoteWebDriver.execute",
+        "org.openqa.selenium.remote.HttpCommandExecutor.execute",
+        "org.openqa.selenium.support.ui.FluentWait",
+        "com.iodesystems.selenium.jQuery\$waitFor",
+        "com.iodesystems.selenium.jQuery.waitFor",
+        "org.springframework.test",
+        "\$El",
+        "\$IEl",
+        "\$Factory"
+      )
+      val stack = sb.toString().lines().filter { line ->
+        banned.find { ban -> line.contains(ban) } == null
+      }.joinToString("\n")
+      val onUrl = "On url: " + driver.currentUrl
+      val tmp = File.createTempFile(
+        "screenshot-" + OffsetDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME), ".png"
+      )
+      Files.move(
+        driver.getScreenshotAs(OutputType.FILE).absoluteFile.toPath(),
+        tmp.toPath(),
+        StandardCopyOption.REPLACE_EXISTING
+      )
+      val screenshot = "See a screenshot at file://" + tmp.absoluteFile
+      val message = e.message + """
           $onUrl
           $screenshot
           With a simplified stack:
         """.trimIndent() + stack
-            jq.find("body").sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
-            println(message)
-            println("Browser Logs:")
-            val logs = jq.driver.manage().logs()
-            println(logs.availableLogTypes.map { logger ->
-                logs.get(logger)
-            }
-                .flatten()
-                .filter { line -> line.message.contains("The user aborted a request") }
-                .joinToString("\n"))
-        } finally {
-            driver.quit()
-        }
+      jq.find("body").sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
+      println(message)
+      println("Browser Logs:")
+      val logs = jq.driver.manage().logs()
+      println(logs.availableLogTypes.map { logger ->
+        logs.get(logger)
+      }
+        .flatten()
+        .filter { line -> line.message.contains("The user aborted a request") }
+        .joinToString("\n"))
+    } finally {
+      driver.quit()
     }
+  }
 
-    @Test
-    fun testGoogleSearch() {
-        subject { jq ->
-            jq.page("http://google.com") {
-                find("input[name='q']").sendKeys("hello world", 30)
-                find("input[value='Google Search']").first().click()
-                find("#result-stats").visible()
-            }
-        }
+  @Test
+  fun testGoogleSearch() {
+    subject { jq ->
+      jq.page("http://google.com") {
+        find("input[name='q']").sendKeys("hello world", 30)
+        find("input[value='Google Search']").first().click()
+        find("#result-stats").visible()
+      }
     }
+  }
 }
 

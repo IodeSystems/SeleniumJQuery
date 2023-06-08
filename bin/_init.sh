@@ -18,4 +18,13 @@ Darwin*)
 *) echo "Unsupported system: ${unameOut}" && exit 1 ;;
 esac
 
+# Maven 3 corrupts concurrent builds!
+# If EXECUTOR_NUMBER is defined, we are running on jenkins, so set the maven
+# repo to a local one. This is to avoid concurrent builds from overwriting each
+# other's artifacts.
+if [ -n "${EXECUTOR_NUMBER:-}" ]; then
+  mkdir -p "$HOME/.m2/repo@$EXECUTOR_NUMBER"
+  export MAVEN_OPTS="-Dmaven.repo.local=$HOME/.m2/repo@$EXECUTOR_NUMBER"
+fi
+
 export SED_COMMAND
