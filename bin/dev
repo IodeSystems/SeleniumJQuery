@@ -70,6 +70,12 @@ clean)
   # Delete kotlin caches
   find ./ -type d -name '.kotlin-cache' -exec rm -rf {} \;
   ;;
+ensure-no-changes)
+  if [[ "$(git status --porcelain=v1 2>/dev/null | wc -l | awk '{print $1}')" != "0" ]]; then
+    git status --porcelain=v1 2>/dev/null
+    exit 1
+  fi
+  ;;
 release)
   dev ensure-no-changes
   $SED_COMMAND --in-place .git/config -e 's|https://github.com/|git@github.com:|'
@@ -91,11 +97,17 @@ release)
   dev ensure-no-changes
   echo "This commit is on tip $BRANCH to release from..."
 
-  echo "Removing snapshot and committing..."
-  mvn versions:set -DremoveSnapshot -DgenerateBackupPoms=false
-  RELEASE_VERSION="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+
+  VERSION="${2-auto}"
+  if [[ "${VERSION}" = "auto" ]]; then
+    echo "Removing snapshot and committing..."
+    mvn versions:set -DremoveSnapshot -DgenerateBackupPoms=false
+    RELEASE_VERSION="$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+  else
+    echo "Setting version to ${VERSION} and committing..."
+    RELEASE_VERSION="${VERSION}"
+  fi
   git commit -am "Release new version: ${RELEASE_VERSION}"
-  git push
 
   echo "Deploying to ${RELEASE_VERSION} repository..."
   mvn deploy -Dmaven.install.skip=true -DskipTests -Prelease

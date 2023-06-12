@@ -9,9 +9,6 @@ pipeline {
         script {
           properties([parameters([
                   booleanParam(defaultValue: false,
-                          description: 'Deploy',
-                          name: 'DEPLOY'),
-                  booleanParam(defaultValue: false,
                           description: 'Release',
                           name: 'RELEASE'),
                   stringParam(defaultValue: 'auto',
