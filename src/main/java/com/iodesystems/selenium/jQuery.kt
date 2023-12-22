@@ -78,7 +78,6 @@ data class jQuery(
     fun parent(parentSelector: String, atLeast: Int? = 1, atMost: Int? = 1): IEl
     fun parent(parentSelector: List<String>, atLeast: Int? = 1, atMost: Int? = 1): IEl
 
-
     fun either(left: String, right: String): Either
     fun either(left: IEl, right: IEl): Either
     fun first(first: IEl, vararg rest: IEl): IEl?
@@ -522,24 +521,24 @@ data class jQuery(
       }
   }
 
-    fun <T> page(url: String, fn: El.() -> T): T {
-        driver.get(url)
-        return fn(find())
-    }
+  fun <T> page(url: String, fn: El.() -> T): T {
+    driver.get(url)
+    return fn(find())
+  }
 
-    fun find(
-        selector: String = "html",
-        atLeast: Int? = 1,
-        atMost: Int? = null,
-    ): El = find(listOf(selector), atLeast, atMost)
+  fun find(
+    selector: String = "html",
+    atLeast: Int? = 1,
+    atMost: Int? = null,
+  ): El = find(listOf(selector), atLeast, atMost)
 
-    fun find(
-        selector: List<String>,
-        atLeast: Int? = 1,
-        atMost: Int? = null,
-    ): El {
-        return El(
-            jq = this, selector = selector, atLeast = atLeast, atMost = atMost
-        )
-    }
+  fun find(
+    selector: List<String>,
+    atLeast: Int? = 1,
+    atMost: Int? = null,
+  ): El {
+    return El(
+      jq = this, selector = selector, atLeast = atLeast, atMost = atMost
+    )
+  }
 }
