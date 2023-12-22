@@ -92,6 +92,7 @@ data class jQuery(
     fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
     fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
     fun js(script: String, vararg args: Any?): Any?
+    fun jq(): jQuery
   }
 
   data class El(
@@ -279,6 +280,10 @@ data class jQuery(
 
     override fun js(script: String, vararg args: Any?): Any? {
       return jq.driver.executeScript(script, *args)
+    }
+
+    override fun jq(): jQuery {
+      return jq
     }
 
     override fun scrollIntoView(): IEl {
