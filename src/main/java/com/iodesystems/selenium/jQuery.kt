@@ -108,6 +108,8 @@ data class jQuery(
     ): T {
       try {
         return fn(el)
+      } catch (e: InvalidElementStateException) {
+        throw RetryException("Element not interactable", e)
       } catch (e: ElementNotInteractableException) {
         throw RetryException("Element not interactable", e)
       } catch (e: StaleElementReferenceException) {
