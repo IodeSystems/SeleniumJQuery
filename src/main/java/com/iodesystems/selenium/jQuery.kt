@@ -16,7 +16,8 @@ data class jQuery(
   val driver: RemoteWebDriver,
   val timeout: Duration = Duration.ofSeconds(5),
   val logQueriesToBrowser: Boolean = false,
-  val logQueriesToStdout: Boolean = false
+  val logQueriesToStdout: Boolean = false,
+  val onInstallScript: String? = null,
 ) {
   class RetryException(
     message: String, cause: Throwable? = null
@@ -471,6 +472,9 @@ data class jQuery(
         jQueryStream?.transferTo(jQueryStreamBuffer)
         val jQueryContent = jQueryStreamBuffer.toString()
         driver.executeScript(jQueryContent)
+        if (onInstallScript != null) {
+          driver.executeScript(onInstallScript)
+        }
       }
     }
   }
