@@ -6,7 +6,7 @@
 
   <groupId>com.iodesystems.selenium-jquery</groupId>
   <artifactId>selenium-jquery</artifactId>
-  <version>3.0.2-SNAPSHOT</version>
+  <version>3.0.2</version>
   <packaging>jar</packaging>
 
   <name>SeleniumJQuery</name>
