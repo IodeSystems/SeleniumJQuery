@@ -502,7 +502,25 @@ data class jQuery(
       } catch (e: StaleElementReferenceException) {
         throw RetryException("Stale element returned", e)
       } catch (e: ScriptTimeoutException) {
-        throw RetryException("Script timeout", e)
+        // Render message and selectors
+        val messages = els.joinToString(", ") { el ->
+          val message = when (el.atMost()) {
+            0 -> "not present"
+            null -> when (el.atLeast()) {
+              0 -> "present"
+              null -> "present"
+              else -> "at least ${el.atLeast()} elements"
+            }
+
+            else -> when (el.atLeast()) {
+              0 -> "at most ${el.atMost()} elements"
+              null -> "at most ${el.atMost()} elements"
+              else -> "between ${el.atLeast()} and ${el.atMost()} elements"
+            }
+          }
+          el.renderSelector() + " to be $message)"
+        }
+        throw RetryException("Timeout waiting for $messages", e)
       }
     }
   }
