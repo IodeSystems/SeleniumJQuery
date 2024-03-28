@@ -8,6 +8,7 @@ import org.openqa.selenium.remote.RemoteWebElement
 import org.openqa.selenium.support.ui.FluentWait
 import org.openqa.selenium.support.ui.Select
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 import java.io.File
 import java.time.Duration
 
@@ -18,7 +19,7 @@ data class jQuery(
   val logQueriesToBrowser: Boolean = false,
   val logQueriesToStdout: Boolean = false,
   val onInstallScript: String? = null,
-) {
+) : Closeable {
   class RetryException(
     message: String, cause: Throwable? = null
   ) : Exception(message, cause)
@@ -564,5 +565,9 @@ data class jQuery(
     return El(
       jq = this, selector = selector, atLeast = atLeast, atMost = atMost
     )
+  }
+
+  override fun close() {
+    driver.close()
   }
 }
