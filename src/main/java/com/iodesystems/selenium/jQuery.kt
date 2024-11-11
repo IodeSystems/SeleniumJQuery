@@ -139,7 +139,7 @@ data class jQuery(
     }
 
     override fun click(): IEl {
-      jq.waitFor("could not click") {
+      jq.waitForNonNull("could not click") {
         val element = element()
         try {
           try {
@@ -157,11 +157,11 @@ data class jQuery(
     }
 
     override fun clear(): IEl {
-      jq.waitFor("could not clear element") {
+      jq.waitForNonNull("could not clear element") {
         safely(element()) {
           clear()
-          val length = getAttribute("value").length
-          if (length > 0) sendKeys((0..(getAttribute("value").length)).joinToString("") {
+          val length = (getAttribute("value") ?: "").length
+          if (length > 0) sendKeys((0..length).joinToString("") {
             Keys.BACK_SPACE
           })
         }
@@ -180,14 +180,14 @@ data class jQuery(
 
     override fun sendKeys(text: CharSequence, rateMillis: Int?): IEl {
       if (rateMillis == null) {
-        jq.waitFor("Could not send keys") {
+        jq.waitForNonNull("Could not send keys") {
           safely(element()) {
             sendKeys(text)
           }
         }
       } else {
         val script = renderScript()
-        jq.waitFor(
+        jq.waitForNonNull(
           "Could not send keys",
           retry = Duration.ofMillis(text.length * rateMillis.toLong()),
           timeOut = Duration.ofMillis(text.length * rateMillis.toLong() * 100),
@@ -215,7 +215,7 @@ data class jQuery(
     }
 
     override fun value(): String {
-      return element().getAttribute("value")
+      return (element().getAttribute("value") ?: "").trim()
     }
 
     override fun gone() {
@@ -410,7 +410,7 @@ data class jQuery(
 
     override fun waitUntil(message: String, fn: IEl.() -> Boolean): IEl {
       val msg = "Timeout waiting for $message on ${renderScript()}"
-      jq.waitFor(msg) {
+      jq.waitForNonNull(msg) {
         if (!fn(this)) {
           throw RetryException(msg)
         }
@@ -419,7 +419,7 @@ data class jQuery(
     }
 
     override fun <T> waitFor(message: String, fn: IEl.() -> T?): T {
-      return jq.waitFor(message) {
+      return jq.waitForNonNull(message) {
         fn(this) ?: throw RetryException("Timeout waiting for $message on ${renderScript()}")
       }
     }
@@ -432,7 +432,7 @@ data class jQuery(
     }
 
     override fun either(left: IEl, right: IEl): Either {
-      return jq.waitFor("Either left or right not found, or both found") {
+      return jq.waitForNonNull("Either left or right not found, or both found") {
         val results = jq.search(listOf(left, right))
         val leftElements = results[0] ?: emptyList()
         val rightElements = results[1] ?: emptyList()
@@ -461,8 +461,8 @@ data class jQuery(
     }
   }
 
-  fun install() {
-    mapOf(
+  private fun install() {
+    val shouldRunOnInstallScript = mapOf(
       "jQuery" to "jquery-3.6.3.min.js",
       "SeleniumJQuery" to "selenium-jquery-helpers.js"
     ).map { entry ->
@@ -475,19 +475,22 @@ data class jQuery(
         jQueryStream?.transferTo(jQueryStreamBuffer)
         val jQueryContent = jQueryStreamBuffer.toString()
         driver.executeScript(jQueryContent)
-        if (onInstallScript != null) {
-          driver.executeScript(onInstallScript)
-        }
+        true
+      } else {
+        false
       }
+    }.any { it }
+    if (shouldRunOnInstallScript && onInstallScript != null) {
+      driver.executeScript(onInstallScript)
     }
   }
 
-  fun escape(string: String): String {
+  private fun escape(string: String): String {
     return '"' + string.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + '"'
   }
 
-  fun search(els: List<IEl>): List<List<RemoteWebElement>?> {
-    return waitFor("Search query to return stable results") {
+  private fun search(els: List<IEl>): List<List<RemoteWebElement>?> {
+    return waitForNonNull("Search query to return stable results") {
       try {
         if (logQueriesToStdout) {
           println(els.joinToString("; ") { it.renderScript() } + ";")
@@ -526,7 +529,7 @@ data class jQuery(
     }
   }
 
-  fun <T> waitFor(
+  fun <T> waitForNonNull(
     failureMessage: String,
     retry: Duration? = null,
     timeOut: Duration? = null,
