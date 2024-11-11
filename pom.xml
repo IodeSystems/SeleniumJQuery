@@ -6,7 +6,7 @@
 
   <groupId>com.iodesystems.selenium-jquery</groupId>
   <artifactId>selenium-jquery</artifactId>
-  <version>3.1.0</version>
+  <version>3.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>SeleniumJQuery</name>
@@ -80,6 +80,10 @@
             <extensions>true</extensions>
             <configuration>
               <serverId>ossrh</serverId>
+              <!--
+                The default 5 minutes doesn't work any more, so we need to set it to 60 minutes
+              -->
+              <stagingProgressTimeoutMinutes>60</stagingProgressTimeoutMinutes>
               <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
               <autoReleaseAfterClose>true</autoReleaseAfterClose>
               <autoDropAfterRelease>true</autoDropAfterRelease>
