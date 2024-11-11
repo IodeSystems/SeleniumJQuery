@@ -131,7 +131,7 @@ release)
 Supported commands:
   setup             ensures your system is setup
   updates           checks for project updates
-  rebuild           resets the database, migrates, and regerenates everything
+  rebuild           resets the database, migrates, and regenerates everything
   clean             cleans out cached files not cleaned by 'mvn clean'
   release           builds a release version and publishes it
 "
