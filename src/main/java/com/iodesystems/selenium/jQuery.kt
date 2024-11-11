@@ -463,7 +463,7 @@ data class jQuery(
 
   private fun install() {
     val shouldRunOnInstallScript = mapOf(
-      "jQuery" to "jquery-3.6.3.min.js",
+      "jQuery" to "jquery-3.7.1.slim.min.js",
       "SeleniumJQuery" to "selenium-jquery-helpers.js"
     ).map { entry ->
       if (logQueriesToStdout) {
