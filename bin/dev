@@ -77,6 +77,7 @@ ensure-no-changes)
   fi
   ;;
 release)
+  mvn clean install
   dev ensure-no-changes
   $SED_COMMAND --in-place .git/config -e 's|https://github.com/|git@github.com:|'
   VERSION="$(git rev-parse HEAD)"
