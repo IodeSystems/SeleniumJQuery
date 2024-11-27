@@ -45,6 +45,7 @@ data class jQuery(
   }
 
   interface IEl {
+    fun data(key: String): String?
     fun actions(): Actions
     fun atLeast(): Int?
     fun atMost(): Int?
@@ -129,6 +130,10 @@ data class jQuery(
         }
         throw RetryException("Element requires scrolling to", e)
       }
+    }
+
+    override fun data(key: String): String? {
+      return element().getAttribute("data-$key")
     }
 
     override fun actions(): Actions {
