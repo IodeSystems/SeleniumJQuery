@@ -27,13 +27,18 @@ data class jQuery(
   @Suppress("unused")
   data class Either(
     private val el: IEl, private val left: Boolean
-  ) : IEl by el {
-    fun <T> left(fn: IEl.() -> T): T? {
+  ) {
+    fun <T> map(fn: (IEl?, IEl?) -> T): T? {
+      return if (left) fn(el, null)
+      else fn(null, el)
+    }
+
+    fun <T> left(fn: (IEl) -> T): T? {
       return if (left) fn(el)
       else null
     }
 
-    fun <T> right(fn: IEl.() -> T): T? {
+    fun <T> right(fn: (IEl) -> T): T? {
       return if (left) null
       else fn(el)
     }
@@ -525,6 +530,25 @@ data class jQuery(
           el.renderSelector() + " to be $message)"
         }
         throw RetryException("Timeout waiting for $messages", e)
+      }
+    }
+  }
+
+  fun waitForJsTrue(
+    script: String,
+    message: String = "script to return true",
+    retryDelay: Duration? = null,
+    timeOut: Duration? = null
+  ) {
+    waitForNonNull(message, retry = retryDelay, timeOut = timeOut) {
+      when (val result = driver.executeScript(script)) {
+        is Boolean -> if (!result) {
+          throw RetryException("Script returned false")
+        } else {
+          true
+        }
+
+        else -> throw RetryException("Script did not return a boolean")
       }
     }
   }
