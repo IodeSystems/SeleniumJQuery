@@ -125,7 +125,7 @@ class jQueryTest {
   fun testGoogleSearch() {
     subject { jq ->
       jq.page("http://google.com") {
-        find("input[name='q']").sendKeys("hello world", 30)
+        find("textarea[name='q']").sendKeys("hello world", 30)
         find("input[value='Google Search']").first().click()
         find("#result-stats").visible()
       }
