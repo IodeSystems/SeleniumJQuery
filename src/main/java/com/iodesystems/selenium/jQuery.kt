@@ -24,23 +24,26 @@ data class jQuery(
     message: String, cause: Throwable? = null
   ) : Exception(message, cause)
 
-  @Suppress("unused")
+  /**
+   * Either left or right not found, or both found, prefers left, but will act on right if left is not found
+   * Passing both left and right as null will throw an exception
+   */
   data class Either(
-    private val el: IEl, private val left: Boolean
-  ) {
+    private val left: IEl? = null,
+    private val right: IEl? = null,
+  ) : IEl by left ?: right!! {
     fun <T> map(fn: (IEl?, IEl?) -> T): T? {
-      return if (left) fn(el, null)
-      else fn(null, el)
+      return fn(left, right)
     }
 
     fun <T> left(fn: (IEl) -> T): T? {
-      return if (left) fn(el)
-      else null
+      return if (left == null) null
+      else fn(left)
     }
 
     fun <T> right(fn: (IEl) -> T): T? {
-      return if (left) null
-      else fn(el)
+      return if (right == null) null
+      else fn(right)
     }
   }
 
@@ -446,11 +449,7 @@ data class jQuery(
         val results = jq.search(listOf(left, right))
         val leftElements = results[0] ?: emptyList()
         val rightElements = results[1] ?: emptyList()
-        if (leftElements.size == 1) {
-          Either(left, left = true)
-        } else if (rightElements.size == 1) {
-          Either(right, left = false)
-        } else {
+        if (leftElements.isEmpty() && rightElements.isEmpty()) {
           val script = """
                         left: ${left.renderScript()}
                         right: ${right.renderScript()}
@@ -465,8 +464,11 @@ data class jQuery(
               "Either found both elements:\n${script}"
             )
           }
-
         }
+        Either(
+          left = if (leftElements.size == 1) left else null,
+          right = if (rightElements.size == 1) right else null
+        )
       }
     }
   }
