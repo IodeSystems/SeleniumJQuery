@@ -33,7 +33,7 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
     <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-    <kotlin.version>2.1.0-Beta2</kotlin.version>
+    <kotlin.version>2.1.10</kotlin.version>
     <selenium.version>4.26.0</selenium.version>
   </properties>
 
