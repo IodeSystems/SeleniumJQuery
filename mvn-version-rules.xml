@@ -4,7 +4,7 @@
     <ignoreVersions>
         <ignoreVersion type="regex">.*RC.*</ignoreVersion>
         <ignoreVersion type="regex">.*rc.*</ignoreVersion>
-        <ignoreVersion type="regex">.*Beta</ignoreVersion>
+        <ignoreVersion type="regex">.*Beta.*</ignoreVersion>
         <ignoreVersion type="regex">.*beta.*</ignoreVersion>
         <ignoreVersion type="regex">.*alpha.*</ignoreVersion>
         <ignoreVersion type="regex">.*Alpha.*</ignoreVersion>
