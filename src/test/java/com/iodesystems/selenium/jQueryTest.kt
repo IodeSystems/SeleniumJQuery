@@ -52,7 +52,7 @@ class jQueryTest {
     options.addArguments("--auto-open-devtools-for-tabs")
     options.addArguments("--remote-allow-origins=*")
     // If you want to see the browser, comment this out
-    options.addArguments("--headless=new").addArguments("window-size=1920,1080")
+//    options.addArguments("--headless=new").addArguments("window-size=1920,1080")
     val logPrefs = LoggingPreferences()
     logPrefs.enable(LogType.BROWSER, Level.ALL)
     options.setCapability("goog:loggingPrefs", logPrefs)
@@ -116,6 +116,7 @@ class jQueryTest {
         .flatten()
         .filter { line -> line.message.contains("The user aborted a request") }
         .joinToString("\n"))
+      assert(false)
     } finally {
       driver.quit()
     }
@@ -125,9 +126,10 @@ class jQueryTest {
   fun testGoogleSearch() {
     subject { jq ->
       jq.page("http://google.com") {
+        icontains("GOOGLE").exists()
+        contains("GOOGLE").gone()
         find("textarea[name='q']").sendKeys("hello world", 30)
         find("input[value='Google Search']").first().click()
-        find("#result-stats").visible()
       }
     }
   }

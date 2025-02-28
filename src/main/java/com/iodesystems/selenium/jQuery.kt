@@ -57,6 +57,8 @@ data class jQuery(
     fun blur(): IEl
     fun text(): String
     fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
+    fun refine(refineSelector: String): IEl
+    fun icontains(text: String): IEl
     fun contains(text: String): IEl
     fun value(): String
     fun gone()
@@ -222,9 +224,18 @@ data class jQuery(
       return this
     }
 
+    override fun refine(refineSelector: String): IEl {
+      return copy(
+        selector = selector.map { "$it$refineSelector" }
+      )
+    }
+
+    override fun icontains(text: String): IEl {
+      return refine(":icontains(${jq.escape(text)})")
+    }
+
     override fun contains(text: String): IEl {
-      val textEncoded = jq.escape(text)
-      return copy(selector = selector.map { "$it:contains($textEncoded)" })
+      return refine(":contains(${jq.escape(text)})")
     }
 
     override fun value(): String {
@@ -239,32 +250,16 @@ data class jQuery(
       element()
     }
 
-    override fun ensureEnabled(): El {
-      copy(
-        selector = selector(":enabled")
-      ).element()
-      return this
+    override fun ensureEnabled(): IEl {
+      return refine(":enabled")
     }
 
-    override fun ensureDisabled(): El {
-      copy(
-        selector = selector(":disabled")
-      ).element()
-      return this
-    }
-
-    fun selector(extension: String? = null): List<String> {
-      return if (extension != null)
-        selector.take(selector.size - 1) +
-            (selector.last() + extension)
-      else
-        selector
+    override fun ensureDisabled(): IEl {
+      return refine(":disabled")
     }
 
     override fun visible(): IEl {
-      return copy(
-        selector = selector(":visible")
-      )
+      return refine(":visible")
     }
 
     override fun maybeExists(): Boolean {
@@ -374,7 +369,7 @@ data class jQuery(
     }
 
     override fun enabled(): IEl {
-      return copy(selector = selector.map { "$it:enabled" })
+      return refine(":enabled")
     }
 
     override fun reroot(selector: String?): IEl {
