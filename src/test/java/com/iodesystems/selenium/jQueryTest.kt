@@ -47,7 +47,7 @@ class jQueryTest {
     val chromeDriverService: ChromeDriverService = ChromeDriverService.Builder()
       .withSilent(true)
       .build()
-    chromeDriverService.sendOutputTo(NullOutputStream.NULL_OUTPUT_STREAM)
+    chromeDriverService.sendOutputTo(NullOutputStream.INSTANCE)
     val options = ChromeOptions()
     options.addArguments("--auto-open-devtools-for-tabs")
     options.addArguments("--remote-allow-origins=*")
