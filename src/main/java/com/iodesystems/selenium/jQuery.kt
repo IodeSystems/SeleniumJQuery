@@ -36,14 +36,14 @@ data class jQuery(
       return fn(left, right)
     }
 
-    fun <T> left(fn: (IEl) -> T): T? {
+    fun <T> left(fn: IEl.(IEl) -> T): T? {
       return if (left == null) null
-      else fn(left)
+      else fn.invoke(left, left)
     }
 
-    fun <T> right(fn: (IEl) -> T): T? {
+    fun <T> right(fn: IEl.(IEl) -> T): T? {
       return if (right == null) null
-      else fn(right)
+      else fn.invoke(right, right)
     }
   }
 
