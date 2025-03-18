@@ -57,6 +57,7 @@ data class jQuery(
     fun blur(): IEl
     fun text(): String
     fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
+    fun withDriver(remoteWebDriver: RemoteWebDriver): IEl
     fun refine(refineSelector: String): IEl
     fun icontains(text: String): IEl
     fun contains(text: String): IEl
@@ -269,6 +270,10 @@ data class jQuery(
     override fun <T> ifExists(fn: IEl.() -> T): T? {
       return if (maybeExists()) return null
       else fn(this)
+    }
+
+    override fun withDriver(remoteWebDriver: RemoteWebDriver): IEl {
+      return jq.copy(driver = remoteWebDriver).find("html")
     }
 
     override fun element(): RemoteWebElement {
