@@ -26,24 +26,5 @@ object IElExtensions {
     return refine(":not($selector)")
   }
 
-  fun IEl.switchToTab(label: String, cb: IEl.(IEl) -> Unit) {
-    val jq = jq()
-    val driver = waitFor {
-      jq.driver.windowHandles.stream().map { handle ->
-        val newDriver = jq.driver.switchTo().window(handle)
-        val title = newDriver.title ?: ""
-        if (title.contains(label, ignoreCase = true)) {
-          newDriver
-        } else {
-          null
-        }
-      }.filter { it != null }.findFirst().orElse(null)
-    }
-    jq.copy(
-      driver = driver as RemoteWebDriver,
-    ).find("html").apply {
-      cb(this)
-      driver.close()
-    }
-  }
+
 }
