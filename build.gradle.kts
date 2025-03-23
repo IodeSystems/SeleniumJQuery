@@ -18,8 +18,8 @@ plugins {
   `java-library`
   `maven-publish`
   signing
-  id("org.jetbrains.dokka-javadoc") version "2.0.0"
-  id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+  id("org.jetbrains.dokka-javadoc")
+  id("io.github.gradle-nexus.publish-plugin")
 }
 
 repositories {
@@ -145,6 +145,7 @@ tasks.register("releaseRevert") {
 }
 tasks.register("releasePublish") {
   dependsOn(tasks.clean)
+  dependsOn(tasks.build)
   dependsOn(tasks.publish)
   dependsOn(tasks.closeAndReleaseStagingRepositories)
   doLast {
