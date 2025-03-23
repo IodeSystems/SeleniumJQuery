@@ -25,6 +25,4 @@ object IElExtensions {
   fun IEl.not(selector: String): IEl {
     return refine(":not($selector)")
   }
-
-
 }
