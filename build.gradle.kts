@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = "com.iodesystems.selenium-jquery"
@@ -16,7 +17,7 @@ plugins {
   `java-library`
   `maven-publish`
   signing
-  id("org.jetbrains.dokka")
+  id("org.jetbrains.dokka-javadoc") version "2.0.0"
   id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
@@ -30,15 +31,24 @@ kotlin {
 
 tasks.withType<KotlinCompile>().configureEach {
   compilerOptions {
-    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    jvmTarget.set(JvmTarget.JVM_21)
     freeCompilerArgs.add("-Xjsr305=strict")
   }
 }
 
+val javadocJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
+  dependsOn(tasks.dokkaGeneratePublicationJavadoc)
+  archiveClassifier.set("javadoc")
+  from(tasks.dokkaGeneratePublicationJavadoc.get().outputDirectory)
+}
 publishing {
   publications {
     create<MavenPublication>("mavenJava") {
       from(components["java"])
+      artifact(javadocJar)
+      artifact(tasks.kotlinSourcesJar) {
+        classifier = "sources"
+      }
       pom {
         name.set(project.name)
         description.set(project.description)
@@ -70,21 +80,12 @@ publishing {
   }
 }
 
-dokka {
-  moduleName.set(rootProject.name)
-  dokkaSourceSets.main {
-    includes.from("README.md")
-    sourceLink {
-      localDirectory.set(file("src/main/kotlin"))
-      remoteUrl("https://github.com/IodeSystems/SeleniumJQuery/blob/main/src/main/kotlin")
-      remoteLineSuffix.set("#L")
-    }
-  }
-}
-
 nexusPublishing {
   repositories {
-    sonatype()
+    sonatype {
+      nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+      snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+    }
   }
 }
 
@@ -106,33 +107,49 @@ dependencies {
   testImplementation(libs.jackson.databind)
 }
 
-
-tasks.register("release") {
-  group = "release"
-  description = "Releases the current version."
-  dependsOn("releaseEnsureNoChanges")
-  doLast {
-    val version = properties["version"] as String
-    if (version.contains("SNAPSHOT")) {
-      writeVersion(version.removeSuffix("-SNAPSHOT"))
-      "git commit -am 'Release $version'".bash()
-      "git tag -a v$version -m 'Release $version'".bash()
-    }
-    "gradle publish".bash()
-    writeVersion(generateVersion("patch") + "-SNAPSHOT", version.removeSuffix("-SNAPSHOT"))
-    "git commit -am 'Prepare for next development iteration'".bash()
-    "git push origin main".bash()
-  }
+signing {
+  useGpgCmd()
+  sign(publishing.publications)
 }
 
-tasks.register("releaseEnsureNoChanges") {
+tasks.register("releaseStripSnapshotCommitAndTag") {
   group = "release"
-  description = "Ensures that there are no changes in the working directory."
   doLast {
     val status = "git status --porcelain".bash().trim()
     if (status.isNotEmpty()) {
       throw GradleException("There are changes in the working directory:\n$status")
     }
+    val oldVersion = version.toString()
+    val newVersion = oldVersion.removeSuffix("-SNAPSHOT")
+    writeVersion(newVersion)
+    "git add build.gradle.kts".bash()
+    "git commit -m 'Release $newVersion'".bash()
+    "git tag -a v$newVersion -m 'Release $newVersion'".bash()
+    "git push".bash()
+    "git push --tags".bash()
+  }
+}
+
+tasks.register("releasePublish") {
+  dependsOn(tasks.publish)
+  dependsOn(tasks.closeAndReleaseStagingRepositories)
+  doLast {
+    val oldVersion = version.toString()
+    val newVersion = generateVersion("dev")
+    writeVersion(newVersion, oldVersion)
+    "git add build.gradle.kts".bash()
+    "git commit -m 'Prepare next development iteration: $newVersion'".bash()
+    "git push".bash()
+  }
+}
+tasks.register("releasePrepareNextDevelopmentIteration") {
+  doLast {
+    val oldVersion = version.toString()
+    val newVersion = generateVersion("dev")
+    writeVersion(newVersion, oldVersion)
+    "git add build.gradle.kts".bash()
+    "git commit -m 'Prepare next development iteration: $newVersion'".bash()
+    "git push".bash()
   }
 }
 
