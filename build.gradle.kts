@@ -82,14 +82,11 @@ dokka {
   }
 }
 
-
-
 nexusPublishing {
   repositories {
     sonatype()
   }
 }
-
 
 dependencies {
   implementation(Kotlin.stdlib.jdk8)
@@ -139,18 +136,6 @@ tasks.register("releaseEnsureNoChanges") {
   }
 }
 
-tasks.register("releaseTagAndPushRelease") {
-  group = "release"
-  description = "Tags the current commit with the current version."
-  dependsOn("releaseEnsureNoChanges")
-  doLast {
-    val version = properties["version"] as String
-    "git tag -a v$version -m 'Release $version'".bash()
-    "git push origin v$version".bash()
-  }
-}
-
-
 fun generateVersion(updateMode: String): String {
   properties["overrideVersion"].let {
     if (it != null) {
@@ -180,16 +165,6 @@ fun writeVersion(newVersion: String, oldVersion: String = version.toString()) {
   val oldContent = buildFile.readText()
   val newContent = oldContent.replace("""= "$oldVersion"""", """= "$newVersion"""")
   buildFile.writeText(newContent)
-}
-
-tasks.register("releaseIncrementVersion") {
-  group = "release"
-  description = "Increments the version in this build file everywhere it is used."
-  doLast {
-    val version = generateVersion(properties["mode"]?.toString() ?: "patch")
-    println("New version: $version")
-    writeVersion(version)
-  }
 }
 
 private fun String.bash(): String {
