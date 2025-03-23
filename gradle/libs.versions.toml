@@ -8,6 +8,10 @@ org-jetbrains-dokka = { id = "org.jetbrains.dokka", version = "2.0.0" }
 
 gradle-nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
 
+org-jetbrains-dokka-javadoc = { id = "org.jetbrains.dokka-javadoc", version = "2.0.0" }
+
+io-github-gradle-nexus-publish-plugin = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
+
 [versions]
 
 kotlin = "2.1.20"
@@ -17,7 +21,6 @@ junit-junit = "4.13.2"
 gradle-nexus-publish = "1.5.0"
 
 [libraries]
-
 
 kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 
@@ -38,3 +41,17 @@ commons-io = "commons-io:commons-io:2.18.0"
 bcprov-jdk18on = "org.bouncycastle:bcprov-jdk18on:1.80"
 
 jackson-databind = "com.fasterxml.jackson.core:jackson-databind:2.18.3"
+
+analysis-kotlin-descriptors = "org.jetbrains.dokka:analysis-kotlin-descriptors:2.0.0"
+
+dokka-core = "org.jetbrains.dokka:dokka-core:2.0.0"
+
+javadoc-plugin = "org.jetbrains.dokka:javadoc-plugin:2.0.0"
+
+templating-plugin = "org.jetbrains.dokka:templating-plugin:2.0.0"
+
+dokka-base = "org.jetbrains.dokka:dokka-base:2.0.0"
+
+kotlin-build-tools-impl = { module = "org.jetbrains.kotlin:kotlin-build-tools-impl" }
+
+kotlin-scripting-compiler-embeddable = { group = "org.jetbrains.kotlin", name = "kotlin-scripting-compiler-embeddable", version.ref = "kotlin" }
