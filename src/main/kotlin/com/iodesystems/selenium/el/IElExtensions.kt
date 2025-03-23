@@ -1,7 +1,4 @@
-package com.iodesystems.selenium
-
-import com.iodesystems.selenium.jQuery.IEl
-import org.openqa.selenium.remote.RemoteWebDriver
+package com.iodesystems.selenium.el
 
 object IElExtensions {
   fun IEl.button(text: String): IEl {

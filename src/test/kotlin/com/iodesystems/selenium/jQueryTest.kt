@@ -106,7 +106,7 @@ class jQueryTest {
           $screenshot
           With a simplified stack:
         """.trimIndent() + stack
-      jq.find("body").sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
+      jq.el().sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
       println(message)
       println("Browser Logs:")
       val logs = jq.driver.manage().logs()
@@ -125,7 +125,7 @@ class jQueryTest {
   @Test
   fun testGoogleSearch() {
     subject { jq ->
-      jq.page("http://google.com") {
+      jq.go("http://google.com") {
         icontains("GOOGLE").exists()
         contains("GOOGLE").gone()
         find("textarea[name='q']").sendKeys("hello world", 30)
