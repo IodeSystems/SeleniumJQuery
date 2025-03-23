@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = "com.iodesystems.selenium-jquery"
-version = "3.2.1-SNAPSHOT"
+version = "3.2.1"
 description =
   "SeleniumJQuery is a tool for writing more effective Selenium tests with the power of jQuery selectors and Kotlin's expressiveness"
 
