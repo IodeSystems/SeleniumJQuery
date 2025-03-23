@@ -1,8 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.time.Duration
 
 group = "com.iodesystems.selenium-jquery"
-version = "3.2.1"
+version = "3.2.2-SNAPSHOT"
 description =
   "SeleniumJQuery is a tool for writing more effective Selenium tests with the power of jQuery selectors and Kotlin's expressiveness"
 
@@ -81,6 +82,10 @@ publishing {
 }
 
 nexusPublishing {
+  transitionCheckOptions {
+    maxRetries.set(300)
+    delayBetween.set(Duration.ofSeconds(10))
+  }
   repositories {
     sonatype {
       nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
@@ -125,12 +130,21 @@ tasks.register("releaseStripSnapshotCommitAndTag") {
     "git add build.gradle.kts".bash()
     "git commit -m 'Release $newVersion'".bash()
     "git tag -a v$newVersion -m 'Release $newVersion'".bash()
-    "git push".bash()
-    "git push --tags".bash()
   }
 }
-
+tasks.register("releaseRevert") {
+  group = "release"
+  doLast {
+    val oldVersion = version.toString()
+    val newVersion = "$oldVersion-SNAPSHOT"
+    writeVersion(newVersion, oldVersion)
+    "git reset --hard HEAD~1".bash()
+    "git tag -d v$oldVersion".bash()
+    println("Reverted to $newVersion")
+  }
+}
 tasks.register("releasePublish") {
+  dependsOn(tasks.clean)
   dependsOn(tasks.publish)
   dependsOn(tasks.closeAndReleaseStagingRepositories)
   doLast {
@@ -140,6 +154,7 @@ tasks.register("releasePublish") {
     "git add build.gradle.kts".bash()
     "git commit -m 'Prepare next development iteration: $newVersion'".bash()
     "git push".bash()
+    "git push --tags".bash()
   }
 }
 tasks.register("releasePrepareNextDevelopmentIteration") {

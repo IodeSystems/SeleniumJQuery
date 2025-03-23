@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
-gradle releaseStripSnapshotCommitAndTag
-gradle releasePublish
-gradle releasePrepareNextDevelopmentIteration
+gradle releaseStripSnapshotCommitAndTag && \
+  (gradle releasePublish || gradle releaseRevert) && \
+  gradle releasePrepareNextDevelopmentIteration
