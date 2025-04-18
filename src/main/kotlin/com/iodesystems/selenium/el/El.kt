@@ -13,7 +13,7 @@ import java.time.Duration
 
 data class El(
   val jq: jQuery,
-  val selector: List<String>,
+  override val selector: List<String>,
   val atLeast: Int? = null,
   val atMost: Int? = null,
 ) : IEl {
@@ -226,7 +226,7 @@ data class El(
 
   override fun findAll(childSelector: List<String>, atLeast: Int?, atMost: Int?): IEl {
     return copy(
-      selector = selector.map { parent ->
+      selector = if (selector.isEmpty()) childSelector else selector.map { parent ->
         childSelector.map { child ->
           "$parent $child".trim()
         }

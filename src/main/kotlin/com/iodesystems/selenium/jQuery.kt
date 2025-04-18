@@ -139,7 +139,7 @@ data class jQuery(
   }
 
   fun el(): El {
-    return El(jq = this, selector = listOf("html"))
+    return El(jq = this, selector = listOf())
   }
 
   override fun close() {

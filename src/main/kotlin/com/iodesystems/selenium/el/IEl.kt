@@ -65,4 +65,6 @@ interface IEl {
   fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
   fun js(script: String, vararg args: Any?): Any?
   fun jq(): jQuery
+
+  val selector: List<String>
 }

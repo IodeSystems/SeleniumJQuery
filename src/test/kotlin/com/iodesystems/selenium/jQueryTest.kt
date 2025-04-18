@@ -21,6 +21,8 @@ import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.Level
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 class jQueryTest {
@@ -119,6 +121,29 @@ class jQueryTest {
       assert(false)
     } finally {
       driver.quit()
+    }
+  }
+
+  @Test
+  fun testRootFind() {
+    subject { jq ->
+      val el = jq.el()
+      assertTrue(el.selector.isEmpty(), "Selector should be empty")
+      el.find("body") {
+        assertEquals(
+          selector,
+          listOf("body")
+        )
+        find(listOf("a", "b")) {
+          assertEquals(
+            selector,
+            listOf(
+              "body a",
+              "body b"
+            )
+          )
+        }
+      }
     }
   }
 
