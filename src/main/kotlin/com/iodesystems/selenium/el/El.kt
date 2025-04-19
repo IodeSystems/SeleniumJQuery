@@ -12,7 +12,7 @@ import java.io.File
 import java.time.Duration
 
 data class El(
-  val jq: jQuery,
+  override val jq: jQuery,
   override val selector: List<String>,
   val atLeast: Int? = null,
   val atMost: Int? = null,
@@ -55,6 +55,10 @@ data class El(
 
   override fun atMost(): Int? {
     return atMost
+  }
+
+  override fun one(): IEl {
+    return require(1, 1)
   }
 
   override fun click(): IEl {
@@ -130,13 +134,12 @@ data class El(
 
   override fun refine(refineSelector: String): IEl {
     return copy(
-      selector = selector.map { "$it$refineSelector" }
+      selector =
+        if (selector.isEmpty()) listOf(refineSelector)
+        else selector.map { "$it$refineSelector" }
     )
   }
 
-  override fun icontains(text: String): IEl {
-    return refine(":icontains(${jq.escape(text)})")
-  }
 
   override fun contains(text: String): IEl {
     return refine(":contains(${jq.escape(text)})")
@@ -151,14 +154,12 @@ data class El(
   }
 
   override fun exists() {
-    element()
+    if (atLeast == null || atLeast == 0) {
+      copy(atLeast = 1).element()
+    } else element()
   }
 
-  override fun ensureEnabled(): IEl {
-    return refine(":enabled")
-  }
-
-  override fun ensureDisabled(): IEl {
+  override fun disabled(): IEl {
     return refine(":disabled")
   }
 
@@ -176,7 +177,7 @@ data class El(
   }
 
   override fun withDriver(remoteWebDriver: RemoteWebDriver): IEl {
-    return jq.copy(driver = remoteWebDriver).el()
+    return jq.copy(driver = remoteWebDriver).root()
   }
 
   override fun element(): RemoteWebElement {
@@ -194,15 +195,12 @@ data class El(
   }
 
   override fun renderSelector(): String {
-    return selector.joinToString(", ")
+    return if (selector.isEmpty()) ":root"
+    else selector.joinToString(", ")
   }
 
   override fun js(script: String, vararg args: Any?): Any? {
     return jq.driver.executeScript(script, *args)
-  }
-
-  override fun jq(): jQuery {
-    return jq
   }
 
   override fun scrollIntoView(): IEl {
@@ -282,7 +280,7 @@ data class El(
 
   override fun reroot(selector: String?): IEl {
     return copy(
-      selector = if (selector != null) listOf(selector) else emptyList(),
+      selector = if (selector == null) emptyList() else listOf(selector),
       atLeast = 1,
       atMost = null
     )
@@ -303,11 +301,11 @@ data class El(
   }
 
   override fun first(): IEl {
-    return copy(selector = selector.map { "$it:first" }, atLeast = 1, atMost = null)
+    return copy(atLeast = 1, atMost = null).refine(":first")
   }
 
   override fun last(): IEl {
-    return copy(selector = selector.map { "$it:last" }, atLeast = 1, atMost = null)
+    return copy(atLeast = 1, atMost = null).refine(":last")
   }
 
   override fun selectValue(value: String): IEl {
@@ -316,7 +314,7 @@ data class El(
   }
 
   override fun <T> withTab(label: String, cb: IEl.() -> T): T {
-    val jq = jq()
+    val jq = jq
     val driver = waitFor {
       jq.driver.windowHandles.stream().map { handle ->
         val newDriver = jq.driver.switchTo().window(handle)
@@ -328,11 +326,10 @@ data class El(
           null
         }
       }.filter { it != null }.findFirst().orElse(null)
-    }
-    jq.copy(
-      driver = driver as RemoteWebDriver,
-    ).el().apply {
-      return cb()
+    } as RemoteWebDriver
+    try {
+      return cb(jq.copy(driver = driver).root())
+    } finally {
       driver.close()
     }
   }
@@ -340,10 +337,12 @@ data class El(
   override fun <T> withFrame(selector: String, fn: IEl.() -> T): T {
     val dr = (jq.driver as WebDriver)
     val frame = find(selector).element()
-    dr.switchTo().frame(frame)
-    val result = fn(copy(selector = listOf("")))
-    dr.switchTo().defaultContent()
-    return result
+    val driver = dr.switchTo().frame(frame) as RemoteWebDriver
+    try {
+      return fn(jq.copy(driver = driver).root())
+    } finally {
+      driver.close()
+    }
   }
 
   override fun waitUntil(message: String, fn: IEl.() -> Boolean): IEl {

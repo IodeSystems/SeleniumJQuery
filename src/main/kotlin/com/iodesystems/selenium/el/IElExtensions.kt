@@ -19,6 +19,11 @@ object IElExtensions {
     }
   }
 
+  fun IEl.icontains(text: String): IEl {
+    return refine(":icontains(${jq.escape(text)})")
+  }
+
+
   fun IEl.not(selector: String): IEl {
     return refine(":not($selector)")
   }

@@ -10,6 +10,7 @@ interface IEl {
   fun actions(): Actions
   fun atLeast(): Int?
   fun atMost(): Int?
+  fun one(): IEl
   fun click(): IEl
   fun clear(): IEl
   fun blur(): IEl
@@ -17,14 +18,13 @@ interface IEl {
   fun sendKeys(text: CharSequence, rateMillis: Int? = null): IEl
   fun withDriver(remoteWebDriver: RemoteWebDriver): IEl
   fun refine(refineSelector: String): IEl
-  fun icontains(text: String): IEl
   fun contains(text: String): IEl
   fun value(): String
   fun gone()
   fun exists()
   fun visible(): IEl
-  fun ensureEnabled(): IEl
-  fun ensureDisabled(): IEl
+  fun enabled(): IEl
+  fun disabled(): IEl
   fun maybeExists(): Boolean
   fun <T> ifExists(fn: IEl.() -> T): T?
   fun element(): RemoteWebElement
@@ -54,7 +54,6 @@ interface IEl {
   fun either(left: IEl, right: IEl): Either
   fun first(first: IEl, vararg rest: IEl): IEl?
   fun escape(string: String): String
-  fun enabled(): IEl
   fun first(): IEl
   fun selectValue(value: String): IEl
   fun last(): IEl
@@ -64,7 +63,7 @@ interface IEl {
   fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
   fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
   fun js(script: String, vararg args: Any?): Any?
-  fun jq(): jQuery
+  val jq: jQuery
 
   val selector: List<String>
 }

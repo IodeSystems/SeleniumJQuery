@@ -130,15 +130,15 @@ data class jQuery(
 
   fun <T> go(url: String): El {
     driver.get(url)
-    return el()
+    return root()
   }
 
   fun <T> go(url: String, fn: El.() -> T): T {
     driver.get(url)
-    return el().fn()
+    return root().fn()
   }
 
-  fun el(): El {
+  fun root(): El {
     return El(jq = this, selector = listOf())
   }
 

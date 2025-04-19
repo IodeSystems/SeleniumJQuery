@@ -1,5 +1,6 @@
 package com.iodesystems.selenium
 
+import com.iodesystems.selenium.el.IElExtensions.icontains
 import io.github.bonigarcia.wdm.WebDriverManager
 import org.apache.commons.io.output.NullOutputStream
 import org.junit.Test
@@ -108,7 +109,7 @@ class jQueryTest {
           $screenshot
           With a simplified stack:
         """.trimIndent() + stack
-      jq.el().sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
+      jq.root().sendKeys(Keys.chord(Keys.COMMAND, Keys.CONTROL, "j"))
       println(message)
       println("Browser Logs:")
       val logs = jq.driver.manage().logs()
@@ -127,7 +128,7 @@ class jQueryTest {
   @Test
   fun testRootFind() {
     subject { jq ->
-      val el = jq.el()
+      val el = jq.root()
       assertTrue(el.selector.isEmpty(), "Selector should be empty")
       el.find("body") {
         assertEquals(
