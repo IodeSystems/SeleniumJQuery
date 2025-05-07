@@ -26,7 +26,7 @@ kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-p
 
 dokka-gradle-plugin = { group = "org.jetbrains.dokka", name = "dokka-gradle-plugin", version = "2.0.0" }
 
-selenium-remote-driver = "org.seleniumhq.selenium:selenium-remote-driver:4.30.0"
+selenium-remote-driver = "org.seleniumhq.selenium:selenium-remote-driver:4.32.0"
 
 selenium-support = "org.seleniumhq.selenium:selenium-support:4.32.0"
 
