@@ -36,7 +36,7 @@ selenium-chrome-driver = "org.seleniumhq.selenium:selenium-chrome-driver:4.30.0"
 
 webdrivermanager = "io.github.bonigarcia:webdrivermanager:6.1.0"
 
-commons-io = "commons-io:commons-io:2.18.0"
+commons-io = "commons-io:commons-io:2.19.0"
 
 bcprov-jdk18on = "org.bouncycastle:bcprov-jdk18on:1.80"
 
