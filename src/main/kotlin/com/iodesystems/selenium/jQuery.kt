@@ -3,6 +3,7 @@ package com.iodesystems.selenium
 import com.iodesystems.selenium.el.El
 import com.iodesystems.selenium.el.IEl
 import com.iodesystems.selenium.exceptions.RetryException
+import com.iodesystems.selenium.exceptions.SearchNotFoundException
 import org.openqa.selenium.JavascriptException
 import org.openqa.selenium.ScriptTimeoutException
 import org.openqa.selenium.StaleElementReferenceException
@@ -121,21 +122,28 @@ data class jQuery(
       .ignoring(RetryException::class.java).until {
         try {
           t()
-        } catch (e: JavascriptException) {
+        } catch (_: JavascriptException) {
           install()
           t()
         }
       }
   }
 
-  fun <T> go(url: String): El {
+  fun go(url: String): El {
+    if (url.startsWith("/")) {
+      val baseUrl = driver.currentUrl?.split("/")?.take(3)?.joinToString("/")
+      if (baseUrl != null) {
+        return go("$baseUrl$url")
+      } else {
+        throw IllegalStateException("No base url found, cannot prepend / to $url")
+      }
+    }
     driver.get(url)
     return root()
   }
 
   fun <T> go(url: String, fn: El.() -> T): T {
-    driver.get(url)
-    return root().fn()
+    return go(url).fn()
   }
 
   fun root(): El {
@@ -145,5 +153,26 @@ data class jQuery(
   override fun close() {
     driver.close()
     driver.quit()
+  }
+
+  fun navigate(): Navigate {
+    return Navigate(driver)
+  }
+
+  data class Navigate(
+    private val driver: RemoteWebDriver
+  ) {
+
+    fun back() {
+      driver.navigate().back()
+    }
+
+    fun forward() {
+      driver.navigate().forward()
+    }
+
+    fun refresh() {
+      driver.navigate().refresh()
+    }
   }
 }

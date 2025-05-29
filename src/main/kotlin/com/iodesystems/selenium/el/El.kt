@@ -45,6 +45,10 @@ data class El(
     return element().getAttribute("data-$key")
   }
 
+  override fun attr(key: String): String? {
+    return element().getAttribute(key)
+  }
+
   override fun actions(): Actions {
     return Actions(jq.driver)
   }
@@ -290,14 +294,15 @@ data class El(
     return jq.escape(string)
   }
 
-  override fun first(first: IEl, vararg rest: IEl): IEl? {
+  override fun first(first: String, vararg rest: String): IEl {
+    return first(find(first), *rest.map { find(it) }.toTypedArray())!!
+  }
+
+  override fun first(first: IEl, vararg rest: IEl): IEl {
     val all = listOf(first) + rest.toList()
     val results = jq.search(all)
-    val found = results.find { it != null }
-    if (found != null) {
-      return all[results.indexOf(found)]
-    }
-    return null
+    val found = results.find { it != null }!!
+    return all[results.indexOf(found)]
   }
 
   override fun first(): IEl {
@@ -358,41 +363,6 @@ data class El(
   override fun <T> waitFor(message: String, fn: IEl.() -> T?): T {
     return jq.waitForNonNull(message) {
       fn(this) ?: throw RetryException("Timeout waiting for $message on ${renderScript()}")
-    }
-  }
-
-
-  override fun either(
-    left: String, right: String
-  ): Either {
-    return either(find(left), find(right))
-  }
-
-  override fun either(left: IEl, right: IEl): Either {
-    return jq.waitForNonNull("Either left or right not found, or both found") {
-      val results = jq.search(listOf(left, right))
-      val leftElements = results[0] ?: emptyList()
-      val rightElements = results[1] ?: emptyList()
-      if (leftElements.isEmpty() && rightElements.isEmpty()) {
-        val script = """
-                        left: ${left.renderScript()}
-                        right: ${right.renderScript()}
-
-                    """.trimIndent()
-        if (leftElements.isEmpty()) {
-          throw RetryException(
-            "Either found no elements:\n${script}"
-          )
-        } else {
-          throw RetryException(
-            "Either found both elements:\n${script}"
-          )
-        }
-      }
-      Either(
-        left = if (leftElements.size == 1) left else null,
-        right = if (rightElements.size == 1) right else null
-      )
     }
   }
 }

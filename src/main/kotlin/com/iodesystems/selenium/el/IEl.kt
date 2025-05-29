@@ -7,6 +7,8 @@ import org.openqa.selenium.remote.RemoteWebElement
 
 interface IEl {
   fun data(key: String): String?
+  fun attr(key: String): String?
+
   fun actions(): Actions
   fun atLeast(): Int?
   fun atMost(): Int?
@@ -50,10 +52,10 @@ interface IEl {
   fun parent(parentSelector: String, atLeast: Int? = 1, atMost: Int? = 1): IEl
   fun parent(parentSelector: List<String>, atLeast: Int? = 1, atMost: Int? = 1): IEl
 
-  fun either(left: String, right: String): Either
-  fun either(left: IEl, right: IEl): Either
-  fun first(first: IEl, vararg rest: IEl): IEl?
+  fun first(first: String, vararg rest: String): IEl
+  fun first(first: IEl, vararg rest: IEl): IEl
   fun escape(string: String): String
+
   fun first(): IEl
   fun selectValue(value: String): IEl
   fun last(): IEl
@@ -63,7 +65,8 @@ interface IEl {
   fun waitUntil(message: String = "condition to be true", fn: IEl.() -> Boolean): IEl
   fun <T> waitFor(message: String = "expression to be nonnull", fn: IEl.() -> T?): T
   fun js(script: String, vararg args: Any?): Any?
-  val jq: jQuery
 
+  val jq: jQuery
   val selector: List<String>
+
 }
