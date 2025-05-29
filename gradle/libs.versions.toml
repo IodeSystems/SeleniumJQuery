@@ -32,7 +32,7 @@ selenium-support = "org.seleniumhq.selenium:selenium-support:4.32.0"
 
 junit = { group = "junit", name = "junit", version.ref = "junit-junit" }
 
-selenium-chrome-driver = "org.seleniumhq.selenium:selenium-chrome-driver:4.32.0"
+selenium-chrome-driver = "org.seleniumhq.selenium:selenium-chrome-driver:4.33.0"
 
 webdrivermanager = "io.github.bonigarcia:webdrivermanager:6.1.0"
 
