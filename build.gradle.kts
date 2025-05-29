@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Duration
 
 group = "com.iodesystems.selenium-jquery"
-version = "4.1.0"
+version = "4.1.1-SNAPSHOT"
 description =
   "SeleniumJQuery is a tool for writing more effective Selenium tests with the power of jQuery selectors and Kotlin's expressiveness"
 
