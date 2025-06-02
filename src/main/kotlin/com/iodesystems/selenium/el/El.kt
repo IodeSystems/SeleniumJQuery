@@ -68,16 +68,12 @@ data class El(
   override fun click(): IEl {
     jq.waitForNonNull("could not click") {
       val element = element()
-      try {
+      safely(element) {
         try {
-          safely(element) {
-            click()
-          }
+          click()
         } catch (e: ElementClickInterceptedException) {
           jq.driver.executeScript("arguments[0].click()", element)
         }
-      } catch (e: StaleElementReferenceException) {
-        throw RetryException("Stale element", e)
       }
     }
     return this
@@ -295,7 +291,7 @@ data class El(
   }
 
   override fun first(first: String, vararg rest: String): IEl {
-    return first(find(first), *rest.map { find(it) }.toTypedArray())!!
+    return first(find(first), *rest.map { find(it) }.toTypedArray())
   }
 
   override fun first(first: IEl, vararg rest: IEl): IEl {

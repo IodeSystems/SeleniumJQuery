@@ -3,8 +3,8 @@ package com.iodesystems.selenium
 import com.iodesystems.selenium.el.El
 import com.iodesystems.selenium.el.IEl
 import com.iodesystems.selenium.exceptions.RetryException
-import com.iodesystems.selenium.exceptions.SearchNotFoundException
 import org.openqa.selenium.JavascriptException
+import org.openqa.selenium.NoSuchWindowException
 import org.openqa.selenium.ScriptTimeoutException
 import org.openqa.selenium.StaleElementReferenceException
 import org.openqa.selenium.remote.RemoteWebDriver
@@ -131,7 +131,19 @@ data class jQuery(
 
   fun go(url: String): El {
     if (url.startsWith("/")) {
-      val baseUrl = driver.currentUrl?.split("/")?.take(3)?.joinToString("/")
+      val baseUrl = try {
+        driver.currentUrl?.split("/")?.take(3)?.joinToString("/")
+      } catch (e: NoSuchWindowException) {
+        val handles = driver.windowHandles
+        if (handles.isEmpty()) throw e
+        // Close other handles
+        handles.drop(1).forEach {
+          driver.switchTo().window(it).close()
+        }
+        // Switch to the first
+        driver.switchTo().window(handles.first())
+        driver.currentUrl
+      }
       if (baseUrl != null) {
         return go("$baseUrl$url")
       } else {
