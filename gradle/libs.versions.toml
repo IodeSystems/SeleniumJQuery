@@ -38,7 +38,7 @@ webdrivermanager = "io.github.bonigarcia:webdrivermanager:6.1.0"
 
 commons-io = "commons-io:commons-io:2.19.0"
 
-bcprov-jdk18on = "org.bouncycastle:bcprov-jdk18on:1.80"
+bcprov-jdk18on = "org.bouncycastle:bcprov-jdk18on:1.81"
 
 jackson-databind = "com.fasterxml.jackson.core:jackson-databind:2.19.0"
 
